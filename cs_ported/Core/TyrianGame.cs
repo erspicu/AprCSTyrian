@@ -40,7 +40,7 @@ public sealed class TyrianGame
                 Loudness.set_volume(255, 255);
                 Nortsong.loadSndFile(false);
                 Loudness.load_music();
-                Loudness.play_song(0); // 播放第一首（OPL FM 合成）
+                Loudness.play_song(2); // 播放一首（OPL FM 合成）；不可用 0：song_playing 初值即 0 會被守衛跳過載入
             }
             else
                 BuildSyntheticPalette();
