@@ -163,6 +163,72 @@ internal static unsafe partial class GameMenu
         }
     }
 
+    /// <summary>對應 game_menu.c:JE_updateNavScreen —— 星圖導航畫面總繪製（網格/星球/虛線 + 平滑捲動）。</summary>
+    public static void JE_updateNavScreen()
+    {
+        tempNavX = (int)MathF.Round(navX);
+        tempNavY = (int)MathF.Round(navY);
+        Vga256d.fill_rectangle_xy(Video.VGAScreen, 19, 16, 135, 169, 2);
+        JE_drawNavLines(true);
+        JE_drawNavLines(false);
+        JE_drawDots();
+
+        for (int x = 0; x < 11; x++)
+            JE_drawPlanet(x);
+
+        for (int x = 0; x < menuChoices[MENU_PLAY_NEXT_LEVEL] - 1; x++)
+            if (Tyrian2.mapPlanet[x] > 11)
+                JE_drawPlanet(Tyrian2.mapPlanet[x] - 1);
+
+        if (Tyrian2.mapOrigin > 11)
+            JE_drawPlanet(Tyrian2.mapOrigin - 1);
+
+        Sprites.blit_sprite(Video.VGAScreenSeg, 0, 0, (uint)Sprites.OPTION_SHAPES, 28); // 導航畫面介面
+
+        if (curSel[MENU_PLAY_NEXT_LEVEL] < menuChoices[MENU_PLAY_NEXT_LEVEL])
+        {
+            int oGr = Varz.PGR[Tyrian2.mapOrigin - 1] - 1;
+            int origin_x_offset = Sprites.sprite((uint)Sprites.PLANET_SHAPES, (uint)oGr).width / 2;
+            int origin_y_offset = Sprites.sprite((uint)Sprites.PLANET_SHAPES, (uint)oGr).height / 2;
+            int destPlanet = Tyrian2.mapPlanet[curSel[MENU_PLAY_NEXT_LEVEL] - 2] - 1;
+            int dGr = Varz.PGR[destPlanet] - 1;
+            int dest_x_offset = Sprites.sprite((uint)Sprites.PLANET_SHAPES, (uint)dGr).width / 2;
+            int dest_y_offset = Sprites.sprite((uint)Sprites.PLANET_SHAPES, (uint)dGr).height / 2;
+
+            newNavX = (planetX[Tyrian2.mapOrigin - 1] - origin_x_offset + planetX[destPlanet] - dest_x_offset) / 2.0f;
+            newNavY = (planetY[Tyrian2.mapOrigin - 1] - origin_y_offset + planetY[destPlanet] - dest_y_offset) / 2.0f;
+        }
+
+        navX += (newNavX - navX) / 2.0f;
+        navY += (newNavY - navY) / 2.0f;
+        if (MathF.Abs(newNavX - navX) < 1) navX = newNavX;
+        if (MathF.Abs(newNavY - navY) < 1) navY = newNavY;
+
+        Vga256d.fill_rectangle_xy(Video.VGAScreen, 314, 0, 319, 199, 230);
+
+        if (planetAniWait > 0)
+        {
+            planetAniWait--;
+        }
+        else
+        {
+            planetAni++;
+            if (planetAni > 14) planetAni = 0;
+            planetAniWait = 3;
+        }
+
+        if (currentDotWait > 0)
+        {
+            currentDotWait--;
+        }
+        else
+        {
+            if (currentDotNum < planetDots[curSel[MENU_PLAY_NEXT_LEVEL] - 2])
+                currentDotNum++;
+            currentDotWait = 5;
+        }
+    }
+
     /// <summary>對應 game_menu.c:JE_partWay —— 兩星球間第 dist 個點的座標插值。</summary>
     public static int JE_partWay(int start, int finish, byte dots, byte dist)
         => (finish - start) / (dots + 2) * (dist + 1) + start;
