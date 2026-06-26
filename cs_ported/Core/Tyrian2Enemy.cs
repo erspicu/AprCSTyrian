@@ -443,8 +443,54 @@ internal static unsafe partial class Tyrian2
                     Varz.enemy[z].eshotwait[j - 1] = (byte)(Varz.enemy[z].eshotwait[j - 1] / 2 + 1);
             }
 
+            // 特殊砲塔型（磁鐵/飛彈/排斥），處理後跳過一般子彈建立
             if (tur >= 251)
-                continue; // TODO: 特殊磁鐵/飛彈型(251-255)
+            {
+                var pl = Players.player;
+                switch (tur)
+                {
+                    case 252: // Savara Boss DualMissile
+                        if (Varz.enemy[z].ey > 20)
+                        {
+                            Varz.JE_setupExplosion(tempX - 8 + ofs, tempY - 20 - Backgrnd.backMove * 8, -2, 6, false, false);
+                            Varz.JE_setupExplosion(tempX + 4 + ofs, tempY - 20 - Backgrnd.backMove * 8, -2, 6, false, false);
+                        }
+                        break;
+                    case 251: // Suck-O-Magnet（吸引玩家）
+                        {
+                            int attraction = 4 - (Math.Abs(pl[0].x - tempX) + Math.Abs(pl[0].y - tempY)) / 100;
+                            if (attraction > 0)
+                                pl[0].x_velocity += (pl[0].x > tempX) ? -attraction : attraction;
+                        }
+                        break;
+                    case 253: // ShortRange Magnet（推 +2）
+                        if (Math.Abs(pl[0].x + 25 - 14 - tempX) < 24 && Math.Abs(pl[0].y - tempY) < 28)
+                            pl[0].x_velocity += 2;
+                        if (Config.twoPlayerMode && Math.Abs(pl[1].x - 14 - tempX) < 24 && Math.Abs(pl[1].y - tempY) < 28)
+                            pl[1].x_velocity += 2;
+                        break;
+                    case 254: // ShortRange Magnet（推 -2）
+                        if (Math.Abs(pl[0].x + 25 - 14 - tempX) < 24 && Math.Abs(pl[0].y - tempY) < 28)
+                            pl[0].x_velocity -= 2;
+                        if (Config.twoPlayerMode && Math.Abs(pl[1].x - 14 - tempX) < 24 && Math.Abs(pl[1].y - tempY) < 28)
+                            pl[1].x_velocity -= 2;
+                        break;
+                    case 255: // Magneto RePulse（排斥玩家）
+                        if (Config.difficultyLevel != Config.DIFFICULTY_EASY)
+                        {
+                            if (j == 3)
+                                Varz.enemy[z].filter = 0x70;
+                            else
+                            {
+                                int repulsion = 4 - (Math.Abs(pl[0].x - tempX) + Math.Abs(pl[0].y - tempY)) / 20;
+                                if (repulsion > 0)
+                                    pl[0].x_velocity += (pl[0].x > tempX) ? repulsion : -repulsion;
+                            }
+                        }
+                        break;
+                }
+                continue; // 特殊型不建立一般子彈
+            }
 
             for (int tempCount = Episodes.weapons[tur].multi; tempCount > 0; tempCount--)
             {
