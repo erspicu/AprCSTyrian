@@ -273,8 +273,8 @@ internal static unsafe partial class GameMenu
                 Nortsong.setFrameCount(4);
 
                 Sprites.blit_sprite(VGAScreen, 50, 50, (uint)Sprites.OPTION_SHAPES, 35);
-                Fonthand.JE_textShade(VGAScreen, 70, 66, MiscText(28), 0, 5, Fonthand.FULL_SHADE);
-                Helptext.JE_helpBox(VGAScreen, 70, 90, MiscText(30), 30, 7, 12, 1, Fonthand.FULL_SHADE);
+                Fonthand.JE_textShade(VGAScreen, 70, 66, Helptext.miscText[28], 0, 5, Fonthand.FULL_SHADE);
+                Helptext.JE_helpBox(VGAScreen, 70, 90, Helptext.miscText[30], 30, 7, 12, 1, Fonthand.FULL_SHADE);
 
                 qcol += (byte)qcolC;
                 if (qcol > 8 || qcol < 2)
@@ -282,13 +282,13 @@ internal static unsafe partial class GameMenu
 
                 int temp_x, temp_c;
 
-                temp_x = 54 + 45 - (Fonthand.JE_textWidth(MiscText(9), (uint)Sprites.FONT_SHAPES) / 2);
+                temp_x = 54 + 45 - (Fonthand.JE_textWidth(Helptext.miscText[9], (uint)Sprites.FONT_SHAPES) / 2);
                 temp_c = quit_selected ? qcol - 12 : -5;
-                Fonthand.JE_outTextAdjust(VGAScreen, temp_x, 128, MiscText(9), 15, temp_c, (uint)Sprites.FONT_SHAPES, true);
+                Fonthand.JE_outTextAdjust(VGAScreen, temp_x, 128, Helptext.miscText[9], 15, temp_c, (uint)Sprites.FONT_SHAPES, true);
 
-                temp_x = 149 + 45 - (Fonthand.JE_textWidth(MiscText(10), (uint)Sprites.FONT_SHAPES) / 2);
+                temp_x = 149 + 45 - (Fonthand.JE_textWidth(Helptext.miscText[10], (uint)Sprites.FONT_SHAPES) / 2);
                 temp_c = !quit_selected ? qcol - 12 : -5;
-                Fonthand.JE_outTextAdjust(VGAScreen, temp_x, 128, MiscText(10), 15, temp_c, (uint)Sprites.FONT_SHAPES, true);
+                Fonthand.JE_outTextAdjust(VGAScreen, temp_x, 128, Helptext.miscText[10], 15, temp_c, (uint)Sprites.FONT_SHAPES, true);
 
                 Mouse.JE_mouseStart();
                 Video.JE_showVGA();
@@ -392,7 +392,7 @@ internal static unsafe partial class GameMenu
                         int t = Tyrian2.mapPlanet[x];
                         Helptext.menuInt[4][x + 1] = Helptext.pName[t - 1];
                     }
-                    Helptext.menuInt[4][x + 1] = MiscText(5);
+                    Helptext.menuInt[4][x + 1] = Helptext.miscText[5];
                 }
                 break;
             case 7: // quit
@@ -1074,7 +1074,7 @@ internal static unsafe partial class GameMenu
                     }
 
                     if (tempW == menuChoices[curMenu] - 1)
-                        tempStr = MiscText(13);
+                        tempStr = Helptext.miscText[13];
                     Fonthand.JE_textShade(Video.VGAScreen, 185, tempY, tempStr, (uint)(temp2 / 16), temp2 % 16 - 8 - afford_shade, Fonthand.DARKEN);
 
                     if (tempW < menuChoices[curMenu] - 1)
