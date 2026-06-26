@@ -12,7 +12,10 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - [x] **版控**：git 初始化 + 推送至 GitHub `erspicu/AprCSTyrian`（private）；`.gitignore` 排除
       `Build`/`private`/`temp`/`bin`/`obj` 與 VS C# 慣例檔；`sources/` 以對照參考提交（移除巢狀 .git）
 - [x] **Phase A 基礎**：`CTypes`(JE_* 別名)、`CMem`(malloc/calloc/realloc/free + DEBUG leak 追蹤)、
-      `Opentyr`(常數/巨集/版本)、`MtRand`(mtrand.c 指標式 MT，非託管 state)
+      `Opentyr`(常數/巨集/版本)、`MtRand`(mtrand.c 指標式 MT，非託管 state)、
+      `Globals`(平台/路徑橋接)、`TyrianHaltException`+`Varz.JE_tyrianHalt`
+- [x] **Phase B 部分**：`CFile`(file.c：data_dir/dir_fopen/fread・fwrite_die/typed・scalar 讀寫，FILE*→Stream)、
+      `MemIO`(memreader.c/memwriter.c：MemReader/MemWriter 指標式 LE)
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`
 - [x] Core 型別：`Color`(8-bit RGB, `FromVga`) / `GameKey` / `VgaScreen`(320×200)

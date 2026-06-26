@@ -10,17 +10,23 @@ namespace AprCSTyrian.Core;
 public sealed class TyrianGame
 {
     private readonly IGamePlatform _platform;
+    private readonly string _dataDir;
+    private readonly string _userDir;
     private readonly byte[] _framebuffer = new byte[VgaScreen.PixelCount];
     private readonly Color[] _palette = new Color[256];
 
-    public TyrianGame(IGamePlatform platform)
+    public TyrianGame(IGamePlatform platform, string dataDir, string userDir)
     {
         _platform = platform;
+        _dataDir = dataDir;
+        _userDir = userDir;
     }
 
     /// <summary>執行主迴圈，直到使用者要求離開。</summary>
     public void Run()
     {
+        Globals.Init(_platform, _dataDir, _userDir);
+
         BuildTestPalette();
         _platform.Video.SetPalette(_palette);
 

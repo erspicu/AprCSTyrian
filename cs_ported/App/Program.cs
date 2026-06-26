@@ -28,9 +28,14 @@ internal static class Program
                 dataRoot: dataRoot,
                 userRoot: userRoot);
 
-            var game = new TyrianGame(platform);
+            var game = new TyrianGame(platform, dataRoot, userRoot);
             game.Run();
             return 0;
+        }
+        catch (TyrianHaltException halt)
+        {
+            // 正常結束流程（對應 C 的 exit(code)）。
+            return halt.Code;
         }
         catch (Exception ex)
         {
