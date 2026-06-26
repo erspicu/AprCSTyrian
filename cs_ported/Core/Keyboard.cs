@@ -33,7 +33,9 @@ internal static class Keyboard
 {
     private const int SDL_POLL_INTERVAL = 10;
 
+#pragma warning disable CS0649 // 由遊戲邏輯指派
     public static bool ESCPressed;
+#pragma warning restore CS0649
     public static bool windowHasFocus;
 
     public static readonly bool[] keysactive = new bool[SdlKeys.SDL_NUM_SCANCODES];

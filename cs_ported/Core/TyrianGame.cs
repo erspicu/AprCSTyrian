@@ -26,6 +26,10 @@ public sealed class TyrianGame
     {
         Globals.Init(_platform, _dataDir, _userDir);
 
+        // 載入設定 (tyrian.cfg) 與存檔/高分 (tyrian.sav)；缺檔則用預設。
+        Config.loadConfiguration();
+        Config.loadSaves();
+
         Video.init_video();
         Keyboard.init_keyboard();
         Joystick.init_joysticks();
@@ -39,7 +43,7 @@ public sealed class TyrianGame
 
                 // 音訊：初始化混音器 + 載入音效 + 播放 OPL 音樂。
                 Loudness.init_audio();
-                Loudness.set_volume(255, 255);
+                Loudness.set_volume((byte)Nortsong.tyrMusicVolume, (byte)Nortsong.fxVolume);
                 Nortsong.loadSndFile(false);
                 Loudness.load_music();
                 Loudness.play_song(2); // 播放一首（OPL FM 合成）；不可用 0：song_playing 初值即 0 會被守衛跳過載入

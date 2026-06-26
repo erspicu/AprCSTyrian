@@ -44,7 +44,10 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - [x] **完整輸入（中性事件佇列）**：`Keyboard`(keyboard.c)、`Mouse`(mouse.c)、`Joystick`(stub)、
       `SdlKeys`(SDL scancode/keymod/KEY_COMBO)、`PlatformEvent`/`IInputBackend.PollEvent`(App SdlInput 翻譯)
       → Core 保持 SDL-free；IVideoBackend 加 MapWindowToScreen/ToggleFullscreen；移除 GameKey
-- 註：config 序列化、varz 重度函式、episodes 資料載入、MegaData 地圖結構待後續
+- [x] **config 序列化**：`Config`(config.c)：二進位設定 tyrian.cfg + 存檔/高分 tyrian.sav
+      (loadConfiguration/saveConfiguration/loadSaves/saveSaves/JE_saveGame/JE_loadGame + 加解密 + 預設高分榜
+      + JE_initProcessorType/setNewGameSpeed)，用已移植 MemIO；TyrianGame 啟動載入
+- 註：config_file.c(opentyrian.cfg INI)、episode 資料載入、varz 重度函式、MegaData 地圖結構待後續
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`
 - [x] Core 型別：`Color`(8-bit RGB, `FromVga`) / `GameKey` / `VgaScreen`(320×200)

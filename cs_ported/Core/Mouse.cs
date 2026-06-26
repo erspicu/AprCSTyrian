@@ -9,7 +9,9 @@ internal static unsafe class Mouse
     public static bool mouse_has_three_buttons = true;
 
     public static bool mouseInactive = true;
+#pragma warning disable CS0649 // 由遊戲/選單邏輯指派
     public static byte mouseCursor;
+#pragma warning restore CS0649
 
     private static ushort mouseGrabX, mouseGrabY;
     private static readonly byte[] mouseGrabShape = new byte[24 * 28];

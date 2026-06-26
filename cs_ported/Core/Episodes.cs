@@ -150,4 +150,10 @@ internal static class Episodes
     public static int episode1DataLoc;
     public static bool bonusLevel;
     public static bool jumpBackToEpisode1;
+
+    /// <summary>對應 episodes.c:JE_initEpisode —— **目前為占位**（關卡/事件資料載入待後續移植）。</summary>
+    public static void JE_initEpisode(int newEpisode)
+    {
+        episodeNum = (byte)newEpisode;
+    }
 }
