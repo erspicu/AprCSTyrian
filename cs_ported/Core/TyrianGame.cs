@@ -40,11 +40,13 @@ public sealed class TyrianGame
 
             var input = _platform.Input;
             uint frame = 0;
-            int picNumber = 1;             // 1..PCX_NUM
-            const int picHoldFrames = 140; // 每張圖停留幀數
 
             if (dataFound)
-                Picload.JE_loadPic(Video.VGAScreen, (byte)picNumber, true); // 載入真實 tyrian.pic 圖
+            {
+                // 套用一組真實調色盤並啟動 3D 星空（背景）。
+                Palette.set_palette(Palette.palettes[0], 0, 255);
+                Starlib.JE_starlib_init();
+            }
             else
                 Palette.set_palette(Palette.colors, 0, 255);
 
@@ -56,17 +58,13 @@ public sealed class TyrianGame
 
                 if (dataFound)
                 {
-                    // 每隔一段時間切換到下一張真實圖片，驗證 picload + 調色盤。
-                    if (frame != 0 && frame % picHoldFrames == 0)
-                    {
-                        picNumber = picNumber % Pcxmast.PCX_NUM + 1;
-                        Picload.JE_loadPic(Video.VGAScreen, (byte)picNumber, true);
-                    }
+                    // 動態星空背景（starlib.c）。
+                    Starlib.starLibMain();
 
-                    // 疊上真實字型文字（驗證 sprite + font 管線）。
-                    FontDraw.drawFontHvShadowAligned(Video.VGAScreen, 160, 2, "APRCSTYRIAN",
+                    // 疊上真實字型標題。
+                    FontDraw.drawFontHvShadowAligned(Video.VGAScreen, 160, 80, "APRCSTYRIAN",
                         Font.FONT_LARGE, FontAlignment.ALIGN_CENTER, 14, 4, true, 2);
-                    FontDraw.drawFontHvShadowAligned(Video.VGAScreen, 160, 184, ".NET 10 C# PORT",
+                    FontDraw.drawFontHvShadowAligned(Video.VGAScreen, 160, 108, ".NET 10 C# PORT",
                         Font.FONT_SMALL, FontAlignment.ALIGN_CENTER, 6, 4, true, 1);
                 }
                 else
