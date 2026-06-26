@@ -45,14 +45,91 @@ internal static unsafe partial class Mainint
         return false;
     }
 
-    /// <summary>
-    /// 對應 mainint.c:JE_SFCodes —— Street Fighter 連續輸入解碼以觸發特殊武器。
-    /// TODO: 待移植（依賴 JE_specialComplete/SFCurrentCode/shipCombos 流程之特殊武器子系統）。
-    /// 目前為可編譯空殼，不改變 moveOk/SFExecuted（誠實回報）。
-    /// </summary>
+    /// <summary>對應 mainint.c:JE_SFCodes —— Street Fighter 式方向連續輸入解碼以觸發特殊武器。</summary>
     public static void JE_SFCodes(byte playerNum_, int PX_, int PY_, int mouseX_, int mouseY_)
     {
-        // TODO: 待移植 mainint.c JE_SFCodes 全文（Street-Fighter 特殊武器觸發子系統）
+        byte temp, temp2, temp3, temp4, temp5;
+
+        uint ship = Players.player[playerNum_ - 1].items.ship;
+
+        /*Get direction*/
+        if (playerNum_ == 2 && ship < 15)
+        {
+            ship = 0;
+        }
+
+        if (ship < 15)
+        {
+            temp2 = (byte)(((mouseY_ > PY_) ? 1 : 0) +    /*UP*/
+                           ((mouseY_ < PY_) ? 1 : 0) +    /*DOWN*/
+                           ((PX_ < mouseX_) ? 1 : 0) +    /*LEFT*/
+                           ((PX_ > mouseX_) ? 1 : 0));    /*RIGHT*/
+            temp = (byte)(((mouseY_ > PY_) ? 1 : 0) * 1 + /*UP*/
+                          ((mouseY_ < PY_) ? 1 : 0) * 2 + /*DOWN*/
+                          ((PX_ < mouseX_) ? 1 : 0) * 3 + /*LEFT*/
+                          ((PX_ > mouseX_) ? 1 : 0) * 4); /*RIGHT*/
+
+            if (temp == 0) // no direction being pressed
+            {
+                if (!Mainint.button[0]) // if fire button is released
+                {
+                    temp = 9;
+                    temp2 = 1;
+                }
+                else
+                {
+                    temp2 = 0;
+                    temp = 99;
+                }
+            }
+
+            if (temp2 == 1) // if exactly one direction pressed or fire button is released
+            {
+                temp += (byte)((Mainint.button[0] ? 1 : 0) * 4);
+
+                temp3 = (byte)(Config.superTyrian ? 21 : 3);
+                for (temp2 = 0; temp2 < temp3; temp2++)
+                {
+                    /*Use SuperTyrian ShipCombos or not?*/
+                    temp5 = Config.superTyrian ? Varz.shipCombosB[temp2] : Varz.shipCombos[ship, temp2];
+
+                    // temp5 == selected combo in ship
+                    if (temp5 == 0) /* combo doesn't exists */
+                    {
+                        // mark twiddles as cancelled/finished
+                        Varz.SFCurrentCode[playerNum_ - 1, temp2] = 0;
+                    }
+                    else
+                    {
+                        // get next combo key
+                        temp4 = Varz.keyboardCombos[temp5 - 1, Varz.SFCurrentCode[playerNum_ - 1, temp2]];
+
+                        // correct key
+                        if (temp4 == temp)
+                        {
+                            Varz.SFCurrentCode[playerNum_ - 1, temp2]++;
+
+                            temp4 = Varz.keyboardCombos[temp5 - 1, Varz.SFCurrentCode[playerNum_ - 1, temp2]];
+                            if (temp4 > 100 && temp4 <= 100 + Lvlmast.SPECIAL_NUM)
+                            {
+                                Varz.SFCurrentCode[playerNum_ - 1, temp2] = 0;
+                                Varz.SFExecuted[playerNum_ - 1] = (byte)(temp4 - 100);
+                            }
+                        }
+                        else
+                        {
+                            if ((temp != 9) &&
+                                (temp4 - 1) % 4 != (temp - 1) % 4 &&
+                                (Varz.SFCurrentCode[playerNum_ - 1, temp2] == 0 ||
+                                 Varz.keyboardCombos[temp5 - 1, Varz.SFCurrentCode[playerNum_ - 1, temp2] - 1] != temp))
+                            {
+                                Varz.SFCurrentCode[playerNum_ - 1, temp2] = 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public static void JE_playerMovement(Player this_player,
