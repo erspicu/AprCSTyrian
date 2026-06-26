@@ -32,6 +32,9 @@ public sealed class TyrianGame
         string[] argv = new string[_args.Length + 1];
         argv[0] = "AprCSTyrian";
         Array.Copy(_args, 0, argv, 1, _args.Length);
+
+        Xmas.xmas = Xmas.xmas_time();  // arg handler may override（對應 opentyr.c main）
+
         Params.JE_paramCheck(argv.Length, argv);
 
         // 載入設定 (tyrian.cfg) 與存檔/高分 (tyrian.sav)；缺檔則用預設。
@@ -46,8 +49,24 @@ public sealed class TyrianGame
             bool dataFound = CFile.data_dir().Length != 0;
             if (dataFound)
             {
+                // 對應 opentyr.c main：聖誕資料檔缺失則停用 xmas。
+                if (Xmas.xmas && (!CFile.dir_file_exists(CFile.data_dir(), "tyrianc.shp") ||
+                                  !CFile.dir_file_exists(CFile.data_dir(), "voicesc.snd")))
+                {
+                    Xmas.xmas = false;
+                    Console.Error.WriteLine("warning: Christmas is missing.");
+                }
+
                 Palette.JE_loadPals();
-                Sprites.JE_loadMainShapeTables("tyrian.shp"); // 字型/介面/option sprites
+                Sprites.JE_loadMainShapeTables(Xmas.xmas ? "tyrianc.shp" : "tyrian.shp"); // 字型/介面/option sprites
+
+                // 對應 opentyr.c main：xmas 啟用時顯示提示，使用者取消則退回一般模式。
+                if (Xmas.xmas && !Xmas.xmas_prompt())
+                {
+                    Xmas.xmas = false;
+                    Sprites.free_main_shape_tables();
+                    Sprites.JE_loadMainShapeTables("tyrian.shp");
+                }
 
                 // 載入完整物品/敵人資料庫 (tyrian.hdt) 與額外船艦圖。
                 Episodes.JE_scanForEpisodes();
@@ -69,6 +88,7 @@ public sealed class TyrianGame
                 // 真正的標題畫面/主選單流程（對應 opentyr.c main 的標題迴圈）。
                 // titleScreen 回 true（New Game/Demo/特殊碼，子畫面尚未移植）時回到標題；
                 // Quit/ESC/右鍵回 false → 結束。
+
 
 
 

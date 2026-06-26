@@ -274,7 +274,9 @@ internal static unsafe class Destruct
     /* libc rand() 替身：destruct 僅在 DE_generateWalls 用一次，且預設
      * max_walls==min_walls 時 (rand()%1)==0，結果無關。提供自足 LCG。 */
     private static uint c_rand_state = 1;
-    private static int c_rand()
+    // 公開供 Xmas（聖誕雪花）使用：原版 xmas.c 與 destruct.c 同樣呼叫 libc rand()，
+    // 共用同一全域序列，故此處共用同一 c_rand 狀態以保持行為一致。
+    internal static int c_rand()
     {
         c_rand_state = c_rand_state * 1103515245u + 12345u;
         return (int)((c_rand_state >> 16) & 0x7fff);
