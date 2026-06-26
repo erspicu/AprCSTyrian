@@ -233,6 +233,51 @@ internal static unsafe partial class Tyrian2
         Varz.enemy[en].fixedmovey = eventRec[eventLoc - 1].eventdat6;
     }
 
+    private static void JE_barX(int x1, int y1, int x2, int y2, int col)
+    {
+        Vga256d.fill_rectangle_xy(Video.VGAScreen, x1, y1, x2, y1, (byte)(col + 1));
+        Vga256d.fill_rectangle_xy(Video.VGAScreen, x1, y1 + 1, x2, y2 - 1, (byte)col);
+        Vga256d.fill_rectangle_xy(Video.VGAScreen, x1, y2, x2, y2, (byte)(col - 1));
+    }
+
+    /// <summary>boss 血條繪製。對應 tyrian2.c draw_boss_bar。</summary>
+    public static void draw_boss_bar()
+    {
+        for (int b = 0; b < 2; b++)
+        {
+            if (Varz.boss_bar[b].link_num == 0)
+                continue;
+
+            uint armor = 256;
+            for (int e = 0; e < 100; e++)
+                if (Varz.enemyAvail[e] != 1 && Varz.enemy[e].linknum == Varz.boss_bar[b].link_num)
+                    if (Varz.enemy[e].armorleft < armor)
+                        armor = Varz.enemy[e].armorleft;
+
+            if (armor > 255 || armor == 0)
+                Varz.boss_bar[b].link_num = 0;
+            else
+                Varz.boss_bar[b].armor = (byte)((armor == 255) ? 254 : armor);
+        }
+
+        int bars = (Varz.boss_bar[0].link_num != 0 ? 1 : 0) + (Varz.boss_bar[1].link_num != 0 ? 1 : 0);
+
+        if (bars == 1 && Varz.boss_bar[0].link_num == 0)
+        {
+            Varz.boss_bar[0] = Varz.boss_bar[1];
+            Varz.boss_bar[1].link_num = 0;
+        }
+
+        for (int b = 0; b < bars; b++)
+        {
+            int x = (bars == 2) ? ((b == 0) ? 125 : 185) : (Varz.levelTimer ? 250 : 155);
+            JE_barX(x - 25, 7, x + 25, 12, 115);
+            JE_barX(x - (Varz.boss_bar[b].armor / 10), 7, x + (Varz.boss_bar[b].armor + 5) / 10, 12, 118 + Varz.boss_bar[b].color);
+            if (Varz.boss_bar[b].color > 0)
+                Varz.boss_bar[b].color--;
+        }
+    }
+
     /// <summary>對應 JE_newEnemy：在 [enemyOffset, +25) 找空槽生成敵人，回傳 slot+1（0=無空槽）。</summary>
     public static int JE_newEnemy(int enemyOffset, ushort eDatI, short uniqueShapeTableI)
     {

@@ -69,6 +69,8 @@ internal static unsafe partial class Tyrian2
             Varz.enemyAvail[i] = 1; // 所有敵人槽初始為空（對應 memset enemyAvail,1）
         for (int i = 0; i < VarzConst.ENEMY_SHOT_MAX; ++i)
             Varz.enemyShotAvail[i] = true; // 所有敵彈槽初始為空
+        for (int i = 0; i < 2; ++i)
+            Varz.boss_bar[i].link_num = 0; // boss 血條清空
 
         // 護盾/裝甲初值（對應 tyrian2.c 880-888）
         for (int i = 0; i < 2; ++i)
@@ -268,6 +270,9 @@ internal static unsafe partial class Tyrian2
 
             // === 爆炸更新/繪製 ===
             Tyrian2.JE_drawExplosions();
+
+            // === boss 血條 + HUD ===
+            Tyrian2.draw_boss_bar();
 
             // === HUD：護盾/裝甲 bar + 分數/特殊武器/超級炸彈 ===
             Varz.JE_drawShield();

@@ -124,6 +124,14 @@ internal unsafe struct EnemyShotType
 }
 
 /// <summary>對應 varz.h:Explosion。</summary>
+/// <summary>對應 tyrian2.h:boss_bar_t（boss 血條）。</summary>
+internal struct boss_bar_t
+{
+    public byte link_num;
+    public byte armor;
+    public byte color;
+}
+
 internal struct Explosion
 {
     public byte ttl;

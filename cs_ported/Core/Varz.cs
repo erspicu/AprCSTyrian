@@ -9,6 +9,7 @@ internal static partial class Varz
     // === 遊戲核心資料層全域（對應 varz.h 的 struct 陣列；其餘 scalar 全域與 const 表隨函式移植補入）===
     public static readonly JE_SingleEnemyType[] enemy = new JE_SingleEnemyType[100];     // JE_MultiEnemyType
     public static readonly byte[] enemyAvail = new byte[100];                            // JE_EnemyAvailType
+    public static readonly boss_bar_t[] boss_bar = new boss_bar_t[2];                     // boss 血條
     public static readonly bool[] enemyShotAvail = new bool[VarzConst.ENEMY_SHOT_MAX];
     public static readonly EnemyShotType[] enemyShot = new EnemyShotType[VarzConst.ENEMY_SHOT_MAX];
     public static readonly Explosion[] explosions = new Explosion[VarzConst.MAX_EXPLOSIONS];

@@ -80,6 +80,11 @@ internal static unsafe partial class Tyrian2
                 Config.starActive = false;
                 break;
 
+            case 79: // 設定 boss 血條
+                Varz.boss_bar[0].link_num = (byte)ev.eventdat;
+                Varz.boss_bar[1].link_num = (byte)ev.eventdat2;
+                break;
+
             case 82: // Give SPECIAL WEAPON
                 Players.player[0].items.special = (byte)ev.eventdat;
                 Config.shotMultiPos[Config.SHOT_SPECIAL] = 0;
