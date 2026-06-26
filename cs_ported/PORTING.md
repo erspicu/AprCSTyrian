@@ -29,7 +29,13 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - [x] **背景星空**：`Starlib`(starlib.c) 3D 星空 → 標題星空背景（互動鍵暫簡化）
 - [x] **varz 結構**：`VarzConst`(常數/enum) + 資料結構（JE_SingleEnemyType/EnemyShotType/Explosion/
       rep_explosion_type/superpixel_type/JE_EventRecType）+ `Varz` 全域陣列（enemy/enemyShot/explosions…）
-- 註：`config_file.c`/`config.c` 與 varz.c 函式/const 表/MegaData 地圖結構待 player/episodes 與遊戲邏輯
+- [x] **player/episodes 結構**：`Lvlmast`(維度常數)、`Player`(PlayerItems/Player/PlayerSidekick + player[2] +
+      all_players_dead/alive，InlineArray 保 value 語意)、`Episodes`(JE_WeaponType/Port/Power/Special/Option/
+      Shield/Ship/EnemyDat 結構 + weaponPort/weapons/ships/options/… 全域)、`Config`(最小占位 twoPlayerMode/galagaMode)
+- [x] **varz 函式（自足子集）**：const 資料表(SAWeapon/optionSelect/keyboardCombos/shipCombos…) +
+      JE_setupExplosion/setupExplosionLarge/doSP/drawSP/portConfigs/wipeShieldArmorBars/drawOptions/drawOptionLevel
+- 註：config 序列化、varz.c 重度函式(specialComplete/doSpecialShot/getShipInfo/drawShield・Armor)、
+      episodes 資料載入、MegaData 地圖結構待 shots/weapons/audio 與資料載入移植
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`
 - [x] Core 型別：`Color`(8-bit RGB, `FromVga`) / `GameKey` / `VgaScreen`(320×200)
