@@ -73,6 +73,35 @@ internal static unsafe partial class GameMenu
         }
     }
 
+    /// <summary>對應 game_menu.c:JE_scaleBitmap —— 將 src 縮放寫入 dst 的 (x1,y1)-(x2,y2) 矩形（最近鄰）。</summary>
+    public static void JE_scaleBitmap(SDL_Surface dst, SDL_Surface src, int x1, int y1, int x2, int y2)
+    {
+        int w = x2 - x1 + 1, h = y2 - y1 + 1;
+        float base_skip_w = src.pitch / (float)w;
+        float base_skip_h = src.h / (float)h;
+
+        byte* dstp = dst.pixels + y1 * dst.pitch + x1;
+        float cumulative_skip_h = 0;
+
+        for (int i = 0; i < h; i++)
+        {
+            byte* src_w = src.pixels + src.w * (uint)cumulative_skip_h;
+            byte* srcp = src_w;
+            cumulative_skip_h += base_skip_h;
+            float cumulative_skip_w = 0;
+
+            for (int j = 0; j < w; j++)
+            {
+                *dstp = *srcp;
+                dstp++;
+                cumulative_skip_w += base_skip_w;
+                srcp = src_w + (uint)cumulative_skip_w;
+            }
+
+            dstp += dst.pitch - w;
+        }
+    }
+
     private static string NameStr(byte* p)
     {
         int n = 0;
