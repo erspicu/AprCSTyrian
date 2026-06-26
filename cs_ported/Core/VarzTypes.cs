@@ -55,11 +55,11 @@ internal unsafe struct JE_SingleEnemyType
     public byte aniactive;
     public byte animax;
     public byte aniwhenfire;
-    public Sprite2_array* sprite2s;
+    public Sprite2_array sprite2s; // C 原為 Sprite2_array*；改值複製（共用 data 指標，data==null=未設）
     public sbyte exrev, eyrev;
     public short exccadd, eyccadd;
     public byte exccwmax, eyccwmax;
-    public void* enemydatofs;
+    public int enemydatofs; // C 原為 void*(&enemyDat[i])；改為 enemyDat 索引
     public bool edamaged;
     public ushort enemytype;
     public byte animin;

@@ -38,5 +38,6 @@ internal static unsafe partial class Tyrian2
     public static ushort explodeMove, returnLoc;
     public static bool stopBackgrounds, enemiesActive, forceEvents, background3x1, background3x1b;
     public static byte stopBackgroundNum;
+    public static ushort totalEnemy; // 摧毀率計數
 #pragma warning restore CS0649
 }
