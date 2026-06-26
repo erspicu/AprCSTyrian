@@ -85,6 +85,35 @@ internal static unsafe partial class GameMenu
     public static readonly int[,] planetDotY = new int[5, 10];
 #pragma warning restore CS0649
 
+    /// <summary>對應 game_menu.c:JE_partWay —— 兩星球間第 dist 個點的座標插值。</summary>
+    public static int JE_partWay(int start, int finish, byte dots, byte dist)
+        => (finish - start) / (dots + 2) * (dist + 1) + start;
+
+    /// <summary>對應 game_menu.c:JE_computeDots —— 計算各路線的導航虛線點。</summary>
+    public static void JE_computeDots()
+    {
+        for (int x = 0; x < Tyrian2.mapPNum; x++)
+        {
+            long distX = planetX[Tyrian2.mapPlanet[x] - 1] - planetX[Tyrian2.mapOrigin - 1];
+            long distY = planetY[Tyrian2.mapPlanet[x] - 1] - planetY[Tyrian2.mapOrigin - 1];
+            long tempX = Math.Abs(distX) + Math.Abs(distY);
+
+            if (tempX != 0)
+                planetDots[x] = (byte)(MathF.Round(MathF.Sqrt(MathF.Sqrt(distX * distX + distY * distY))) - 1);
+            else
+                planetDots[x] = 0;
+
+            if (planetDots[x] > 10)
+                planetDots[x] = 10;
+
+            for (int y = 0; y < planetDots[x]; y++)
+            {
+                planetDotX[x, y] = JE_partWay(planetX[Tyrian2.mapOrigin - 1], planetX[Tyrian2.mapPlanet[x] - 1], planetDots[x], (byte)y);
+                planetDotY[x, y] = JE_partWay(planetY[Tyrian2.mapOrigin - 1], planetY[Tyrian2.mapPlanet[x] - 1], planetDots[x], (byte)y);
+            }
+        }
+    }
+
     /// <summary>對應 game_menu.c:JE_drawDots —— 畫星圖導航虛線點。</summary>
     public static void JE_drawDots()
     {
