@@ -232,13 +232,372 @@ internal static unsafe partial class Varz
         }
     }
 
-    /// <summary>
-    /// 對應 varz.c:JE_doSpecialShot —— 特殊武器發射（街機/Street-Fighter 觸發）。
-    /// TODO: 待移植 JE_specialComplete / flareDuration / zinglonDuration（特殊武器子系統未移植）。
-    /// 目前為可編譯空殼，不執行任何特殊武器行為（誠實回報）。
-    /// </summary>
+    /// <summary>對應 varz.c:JE_specialComplete —— 特殊武器觸發後的效果。</summary>
+    public static void JE_specialComplete(byte playerNum, byte specialType)
+    {
+        Tyrian2.nextSpecialWait = 0;
+        switch (Episodes.special[specialType].stype)
+        {
+            /*Weapon*/
+            case 1:
+                if (playerNum == 1)
+                    b = Shots.player_shot_create(0, (uint)Config.SHOT_SPECIAL2, (ushort)Players.player[0].x, (ushort)Players.player[0].y, Players.player[0].mouseX, Players.player[0].mouseY, Episodes.special[specialType].wpn, playerNum);
+                else
+                    b = Shots.player_shot_create(0, (uint)Config.SHOT_SPECIAL2, (ushort)Players.player[1].x, (ushort)Players.player[1].y, Players.player[0].mouseX, Players.player[0].mouseY, Episodes.special[specialType].wpn, playerNum);
+
+                Config.shotRepeat[Config.SHOT_SPECIAL] = Config.shotRepeat[Config.SHOT_SPECIAL2];
+                break;
+            /*Repulsor*/
+            case 2:
+                for (temp = 0; temp < VarzConst.ENEMY_SHOT_MAX; temp++)
+                {
+                    if (!enemyShotAvail[temp])
+                    {
+                        if (Players.player[0].x > enemyShot[temp].sx)
+                            enemyShot[temp].sxm--;
+                        else if (Players.player[0].x < enemyShot[temp].sx)
+                            enemyShot[temp].sxm++;
+
+                        if (Players.player[0].y > enemyShot[temp].sy)
+                            enemyShot[temp].sym--;
+                        else if (Players.player[0].y < enemyShot[temp].sy)
+                            enemyShot[temp].sym++;
+                    }
+                }
+                break;
+            /*Zinglon Blast*/
+            case 3:
+                Tyrian2.zinglonDuration = 50;
+                Config.shotRepeat[Config.SHOT_SPECIAL] = 100;
+                soundQueue[7] = (byte)Sndmast.S_SOUL_OF_ZINGLON;
+                break;
+            /*Attractor*/
+            case 4:
+                for (temp = 0; temp < 100; temp++)
+                {
+                    if (enemyAvail[temp] != 1 && enemy[temp].scoreitem &&
+                        enemy[temp].evalue != 0)
+                    {
+                        if (Players.player[0].x > enemy[temp].ex)
+                            enemy[temp].exc++;
+                        else if (Players.player[0].x < enemy[temp].ex)
+                            enemy[temp].exc--;
+
+                        if (Players.player[0].y > enemy[temp].ey)
+                            enemy[temp].eyc++;
+                        else if (Players.player[0].y < enemy[temp].ey)
+                            enemy[temp].eyc--;
+                    }
+                }
+                break;
+            /*Flare*/
+            case 5:
+            case 6:
+            case 7:
+            case 8:
+            case 9:
+            case 10:
+            case 11:
+            case 16:
+                if (flareDuration == 0)
+                    flareStart = true;
+
+                specialWeaponWpn = Episodes.special[specialType].wpn;
+                linkToPlayer = false;
+                spraySpecial = false;
+                switch (Episodes.special[specialType].stype)
+                {
+                    case 5:
+                        specialWeaponFilter = 7;
+                        specialWeaponFreq = 2;
+                        flareDuration = 50;
+                        break;
+                    case 6:
+                        specialWeaponFilter = 1;
+                        specialWeaponFreq = 7;
+                        flareDuration = (ushort)(200 + 25 * Players.player[0].items.weapon[Players.FRONT_WEAPON].power);
+                        break;
+                    case 7:
+                        specialWeaponFilter = 3;
+                        specialWeaponFreq = 3;
+                        flareDuration = (ushort)(50 + 10 * Players.player[0].items.weapon[Players.FRONT_WEAPON].power);
+                        Tyrian2.zinglonDuration = 50;
+                        Config.shotRepeat[Config.SHOT_SPECIAL] = 100;
+                        soundQueue[7] = (byte)Sndmast.S_SOUL_OF_ZINGLON;
+                        break;
+                    case 8:
+                        specialWeaponFilter = -99;
+                        specialWeaponFreq = 7;
+                        flareDuration = (ushort)(10 + Players.player[0].items.weapon[Players.FRONT_WEAPON].power);
+                        break;
+                    case 9:
+                        specialWeaponFilter = -99;
+                        specialWeaponFreq = 8;
+                        flareDuration = (ushort)(8 + 2 * Players.player[0].items.weapon[Players.FRONT_WEAPON].power);
+                        linkToPlayer = true;
+                        Tyrian2.nextSpecialWait = Episodes.special[specialType].pwr;
+                        break;
+                    case 10:
+                        specialWeaponFilter = -99;
+                        specialWeaponFreq = 8;
+                        flareDuration = (ushort)(14 + 4 * Players.player[0].items.weapon[Players.FRONT_WEAPON].power);
+                        linkToPlayer = true;
+                        break;
+                    case 11:
+                        specialWeaponFilter = -99;
+                        specialWeaponFreq = (sbyte)Episodes.special[specialType].pwr;
+                        flareDuration = (ushort)(10 + 10 * Players.player[0].items.weapon[Players.FRONT_WEAPON].power);
+                        Tyrian2.astralDuration = (byte)(20 + 10 * Players.player[0].items.weapon[Players.FRONT_WEAPON].power);
+                        break;
+                    case 16:
+                        specialWeaponFilter = -99;
+                        specialWeaponFreq = 8;
+                        flareDuration = (ushort)(temp2 * 16 + 8);
+                        linkToPlayer = true;
+                        spraySpecial = true;
+                        break;
+                }
+                break;
+            case 12:  // Invulnerability
+                Players.player[playerNum-1].invulnerable_ticks = (uint)(temp2 * 10);
+
+                if (Config.superArcadeMode > 0 && Config.superArcadeMode <= VarzConst.SA)
+                {
+                    Config.shotRepeat[Config.SHOT_SPECIAL] = 250;
+                    b = Shots.player_shot_create(0, (uint)Config.SHOT_SPECIAL2, (ushort)Players.player[0].x, (ushort)Players.player[0].y, Players.player[0].mouseX, Players.player[0].mouseY, 707, 1);
+                    Players.player[0].invulnerable_ticks = 100;
+                }
+                break;
+            case 13:  // Repair Player 1
+                Players.player[0].armor += (uint)(temp2 / 4 + 1);
+
+                soundQueue[3] = (byte)Sndmast.S_POWERUP;
+                break;
+            case 14:  // Repair Player 2
+                Players.player[1].armor += (uint)(temp2 / 4 + 1);
+
+                soundQueue[3] = (byte)Sndmast.S_POWERUP;
+                break;
+
+            case 17:  // Spawn left or right sidekick
+                soundQueue[3] = (byte)Sndmast.S_POWERUP;
+
+                if (Players.player[0].items.sidekick[Players.LEFT_SIDEKICK] == Episodes.special[specialType].wpn)
+                {
+                    Players.player[0].items.sidekick[Players.RIGHT_SIDEKICK] = (byte)Episodes.special[specialType].wpn;
+                    Config.shotMultiPos[Players.RIGHT_SIDEKICK] = 0;
+                }
+                else
+                {
+                    Players.player[0].items.sidekick[Players.LEFT_SIDEKICK] = (byte)Episodes.special[specialType].wpn;
+                    Config.shotMultiPos[Players.LEFT_SIDEKICK] = 0;
+                }
+
+                JE_drawOptions();
+                break;
+
+            case 18:  // Spawn right sidekick
+                Players.player[0].items.sidekick[Players.RIGHT_SIDEKICK] = (byte)Episodes.special[specialType].wpn;
+
+                JE_drawOptions();
+
+                soundQueue[4] = (byte)Sndmast.S_POWERUP;
+
+                Config.shotMultiPos[Players.RIGHT_SIDEKICK] = 0;
+                break;
+        }
+    }
+
+    /// <summary>對應 varz.c:JE_doSpecialShot —— 特殊武器發射主邏輯。</summary>
     public static void JE_doSpecialShot(byte playerNum, ref uint armor, ref uint shield)
     {
-        // TODO: 待移植 varz.c JE_doSpecialShot 全文（依賴 JE_specialComplete 等未移植函式）
+        if (Players.player[0].items.special > 0)
+        {
+            if (Config.shotRepeat[Config.SHOT_SPECIAL] == 0 && specialWait == 0 && flareDuration < 2 && Tyrian2.zinglonDuration < 2)
+                Sprites.blit_sprite2(Video.VGAScreen, 47, 4, Sprites.spriteSheet9, 94);
+            else
+                Sprites.blit_sprite2(Video.VGAScreen, 47, 4, Sprites.spriteSheet9, 93);
+        }
+
+        if (Config.shotRepeat[Config.SHOT_SPECIAL] > 0)
+        {
+            --Config.shotRepeat[Config.SHOT_SPECIAL];
+        }
+        if (specialWait > 0)
+        {
+            specialWait--;
+        }
+        temp = SFExecuted[playerNum-1];
+        if (temp > 0 && Config.shotRepeat[Config.SHOT_SPECIAL] == 0 && flareDuration == 0)
+        {
+            temp2 = Episodes.special[temp].pwr;
+
+            bool can_afford = true;
+
+            if (temp2 > 0)
+            {
+                if (temp2 < 98)  // costs some shield
+                {
+                    if (shield >= temp2)
+                        shield -= temp2;
+                    else
+                        can_afford = false;
+                }
+                else if (temp2 == 98)  // costs all shield
+                {
+                    if (shield < 4)
+                        can_afford = false;
+                    temp2 = (byte)shield;
+                    shield = 0;
+                }
+                else if (temp2 == 99)  // costs half shield
+                {
+                    temp2 = (byte)(shield / 2);
+                    shield = temp2;
+                }
+                else  // costs some armor
+                {
+                    temp2 -= 100;
+                    if (armor > temp2)
+                        armor -= temp2;
+                    else
+                        can_afford = false;
+                }
+            }
+
+            Config.shotMultiPos[Config.SHOT_SPECIAL] = 0;
+            Config.shotMultiPos[Config.SHOT_SPECIAL2] = 0;
+
+            if (can_afford)
+                JE_specialComplete(playerNum, temp);
+
+            SFExecuted[playerNum-1] = 0;
+
+            JE_wipeShieldArmorBars();
+            Video.VGAScreen = Video.VGAScreenSeg; /* side-effect of game_screen */
+            JE_drawShield();
+            JE_drawArmor();
+            Video.VGAScreen = Video.game_screen; /* side-effect of game_screen */
+        }
+
+        if (playerNum == 1 && Players.player[0].items.special > 0)
+        {  /*Main Begin*/
+
+            if (Config.superArcadeMode > 0 && (Mainint.button[2-1] || Mainint.button[3-1]))
+            {
+                fireButtonHeld = false;
+            }
+            if (!Mainint.button[1-1] && !(Config.superArcadeMode != VarzConst.SA_NONE && (Mainint.button[2-1] || Mainint.button[3-1])))
+            {
+                fireButtonHeld = false;
+            }
+            else if (Config.shotRepeat[Config.SHOT_SPECIAL] == 0 && !fireButtonHeld && !(flareDuration > 0) && specialWait == 0)
+            {
+                fireButtonHeld = true;
+                JE_specialComplete(playerNum, Players.player[0].items.special);
+            }
+
+        }  /*Main End*/
+
+        if (Tyrian2.astralDuration > 0)
+            Tyrian2.astralDuration--;
+
+        Shots.shotAvail[Shots.MAX_PWEAPON-1] = 0;
+        if (flareDuration > 1)
+        {
+            if (specialWeaponFilter != -99)
+            {
+                if (Config.levelFilter == -99 && Config.levelBrightness == -99)
+                {
+                    Config.filterActive = false;
+                }
+                if (!Config.filterActive)
+                {
+                    Config.levelFilter = specialWeaponFilter;
+                    if (Config.levelFilter == 7)
+                    {
+                        Config.levelBrightness = 0;
+                    }
+                    Config.filterActive = true;
+                }
+
+                if (MtRand.mt_rand() % 2 == 0)
+                    flareColChg = -1;
+                else
+                    flareColChg = 1;
+
+                if (Config.levelFilter == 7)
+                {
+                    if (Config.levelBrightness < -6)
+                    {
+                        flareColChg = 1;
+                    }
+                    if (Config.levelBrightness > 6)
+                    {
+                        flareColChg = -1;
+                    }
+                    Config.levelBrightness += flareColChg;
+                }
+            }
+
+            if ((int)(MtRand.mt_rand() % 6) < specialWeaponFreq)
+            {
+                b = Shots.MAX_PWEAPON;
+
+                if (linkToPlayer)
+                {
+                    if (Config.shotRepeat[Config.SHOT_SPECIAL] == 0)
+                    {
+                        b = Shots.player_shot_create(0, (uint)Config.SHOT_SPECIAL, (ushort)Players.player[0].x, (ushort)Players.player[0].y, Players.player[0].mouseX, Players.player[0].mouseY, specialWeaponWpn, playerNum);
+                    }
+                }
+                else
+                {
+                    b = Shots.player_shot_create(0, (uint)Config.SHOT_SPECIAL, (ushort)(MtRand.mt_rand() % 280), (ushort)(MtRand.mt_rand() % 180), Players.player[0].mouseX, Players.player[0].mouseY, specialWeaponWpn, playerNum);
+                }
+
+                if (spraySpecial && b != Shots.MAX_PWEAPON)
+                {
+                    Shots.playerShotData[b].shotXM = (short)((int)(MtRand.mt_rand() % 5) - 2);
+                    Shots.playerShotData[b].shotYM = (short)((int)(MtRand.mt_rand() % 5) - 2);
+                    if (Shots.playerShotData[b].shotYM == 0)
+                    {
+                        Shots.playerShotData[b].shotYM++;
+                    }
+                }
+            }
+
+            flareDuration--;
+            if (flareDuration == 1)
+            {
+                specialWait = Tyrian2.nextSpecialWait;
+            }
+        }
+        else if (flareStart)
+        {
+            flareStart = false;
+            Config.shotRepeat[Config.SHOT_SPECIAL] = (byte)(linkToPlayer ? 15 : 200);
+            flareDuration = 0;
+            if (Config.levelFilter == specialWeaponFilter)
+            {
+                Config.levelFilter = -99;
+                Config.levelBrightness = -99;
+                Config.filterActive = false;
+            }
+        }
+
+        if (Tyrian2.zinglonDuration > 1)
+        {
+            temp = (byte)(25 - Math.Abs(Tyrian2.zinglonDuration - 25));
+
+            Vga256d.JE_barBright(Video.VGAScreen, Players.player[0].x + 7 - temp,     0, Players.player[0].x + 7 + temp,     184);
+            Vga256d.JE_barBright(Video.VGAScreen, Players.player[0].x + 7 - temp - 2, 0, Players.player[0].x + 7 + temp + 2, 184);
+
+            Tyrian2.zinglonDuration--;
+            if (Tyrian2.zinglonDuration % 5 == 0)
+            {
+                Shots.shotAvail[Shots.MAX_PWEAPON-1] = 1;
+            }
+        }
     }
 }

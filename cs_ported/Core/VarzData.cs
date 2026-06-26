@@ -145,6 +145,15 @@ internal static partial class Varz
     public static readonly byte[] SFExecuted = new byte[2]; // varz.c: JE_byte SFExecuted[2]
     public static readonly byte[,] SFCurrentCode = new byte[2, 21]; // varz.c: JE_byte SFCurrentCode[2][21]
 
+    // === 特殊武器子系統（JE_specialComplete / JE_doSpecialShot）所需全域（對應 varz.c）===
+    public static ushort flareDuration;           // varz.c: JE_word flareDuration
+    public static bool flareStart;                // varz.c: JE_boolean flareStart
+    public static sbyte flareColChg;              // varz.c: JE_shortint flareColChg
+    public static bool spraySpecial;              // varz.c: JE_boolean spraySpecial
+    public static sbyte specialWeaponFilter, specialWeaponFreq; // varz.c: JE_shortint
+    public static ushort specialWeaponWpn;        // varz.c: JE_word specialWeaponWpn
+    public static bool linkToPlayer;              // varz.c: JE_boolean linkToPlayer
+
     // demo 錄/放系統（待移植 demo file IO；先放狀態欄位供編譯）
     public static byte demo_keys;                 // mainint.c: Uint8 demo_keys
     public static ushort demo_keys_wait;          // mainint.c: Uint16 demo_keys_wait
