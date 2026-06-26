@@ -13,6 +13,32 @@ internal static unsafe partial class Tyrian2
         Buffer.MemoryCopy(src.pixels, dst.pixels, n, n);
     }
 
+    public static unsafe void intro_logos()
+    {
+        Varz.moveTyrianLogoUp = true;
+
+        Sdl.SDL_FillRect(Video.VGAScreen, null, 0);
+        Palette.fade_white(25);
+
+        Picload.JE_loadPic(Video.VGAScreen, 10, false);
+        Video.JE_showVGA();
+        Palette.fade_palette(Palette.colors, 25, 0, 255);
+
+        Nortsong.setFrameCount(200);
+        Keyboard.waitUntilGetInputOrElapsed();
+
+        Palette.fade_black(10);
+
+        Picload.JE_loadPic(Video.VGAScreen, 12, false);
+        Video.JE_showVGA();
+        Palette.fade_palette(Palette.colors, 10, 0, 255);
+
+        Nortsong.setFrameCount(200);
+        Keyboard.waitUntilGetInputOrElapsed();
+
+        Palette.fade_black(10);
+    }
+
     public static bool titleScreen()
     {
         const int MENU_ITEM_NEW_GAME = 0, MENU_ITEM_LOAD_GAME = 1, MENU_ITEM_HIGH_SCORES = 2,
