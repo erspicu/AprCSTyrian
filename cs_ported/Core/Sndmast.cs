@@ -50,4 +50,18 @@ internal static class Sndmast
     public const int V_SPIKES = 36;
     public const int V_DATA_CUBE = 37;
     public const int V_ACCELERATE = 38;
+
+    /// <summary>對應 sndmast.c:windowTextSamples[9]（[1..9]，case 16 用）。</summary>
+    public static readonly byte[] windowTextSamples =
+    {
+        V_DANGER,
+        V_BOSS,
+        V_ENEMIES,
+        V_CLEARED_PLATFORM,
+        V_DANGER,
+        V_SPIKES,
+        V_ACCELERATE,
+        V_DANGER,
+        V_ENEMIES,
+    };
 }

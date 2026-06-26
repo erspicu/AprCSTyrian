@@ -434,6 +434,35 @@ internal static unsafe partial class Tyrian2
         eventLoc = (ushort)(t - 1);
     }
 
+    /// <summary>對應 tyrian2.c:JE_searchFor —— 尋找指定 linknum 的存活敵人。</summary>
+    public static bool JE_searchFor(byte PLType) => JE_searchFor(PLType, out _);
+
+    public static bool JE_searchFor(byte PLType, out byte out_index)
+    {
+        int found_id = -1;
+
+        for (int i = 0; i < 100; i++)
+        {
+            if (Varz.enemyAvail[i] == 0 && Varz.enemy[i].linknum == PLType)
+            {
+                found_id = i;
+                if (Config.galagaMode)
+                    Varz.enemy[i].evalue += Varz.enemy[i].evalue;
+            }
+        }
+
+        if (found_id != -1)
+        {
+            out_index = (byte)found_id;
+            return true;
+        }
+        else
+        {
+            out_index = 0;
+            return false;
+        }
+    }
+
     private static void blit_enemy(int i, int xofs, int yofs, int spriteOfs)
     {
         if (Varz.enemy[i].sprite2s.data == null)

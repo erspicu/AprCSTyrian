@@ -31,6 +31,18 @@ internal static unsafe partial class Mainint
     public static bool performSave;
     public static ushort upgradeCost, downgradeCost;
 
+    public static ushort textErase; // mainint.c: JE_word textErase
+
+    /// <summary>對應 mainint.c:JE_drawTextWindow —— 遊戲內文字視窗。</summary>
+    public static void JE_drawTextWindow(string text)
+    {
+        if (textErase > 0) // erase current text
+            Sprites.blit_sprite(Video.VGAScreenSeg, 16, 189, (uint)Sprites.OPTION_SHAPES, 36); // in-game text area
+
+        textErase = 100;
+        Fonthand.JE_outText(Video.VGAScreen, 20, 190, text, 0, 4);
+    }
+
     /// <summary>對應 mainint.c:weapon_upgrade_cost —— 武器升級成本（base × Σ1..power）。</summary>
     public static long weapon_upgrade_cost(long base_cost, uint power)
     {

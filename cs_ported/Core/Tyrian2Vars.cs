@@ -45,5 +45,15 @@ internal static unsafe partial class Tyrian2
     public static readonly bool[] globalFlags = new bool[10];
     public static bool smallEnemyAdjust;
     public static int explosionFollowAmountX, explosionFollowAmountY;
+
+    // 事件系統用全域（對應 varz.h / musmast.h）
+    public static readonly byte[] newPL = new byte[10];   // varz.h: JE_byte newPL[10]
+    public static bool returnActive;                       // varz.h: JE_boolean returnActive
+    public static ushort galagaShotFreq;                   // varz.h: JE_word galagaShotFreq
+    public static byte damageRate;                         // varz.h: JE_byte damageRate
+    public static ushort levelTimerJumpTo;                 // varz.h: JE_word levelTimerJumpTo
+    public static bool randomExplosions;                   // varz.h: JE_boolean randomExplosions
+    public static bool allPlayersGone;                     // varz.h: JE_boolean allPlayersGone
+    public static bool musicFade;                          // musmast.h: JE_boolean musicFade
 #pragma warning restore CS0649
 }
