@@ -86,6 +86,7 @@ public sealed class TyrianGame
 
 
 
+
                 Tyrian2.intro_logos(); // 開場 logo 動畫（對應 opentyr.c main 的 intro_logos）
 
                 // 對應 opentyr.c main 的標題迴圈：initPlayerData → titleScreen → JE_main。
@@ -100,7 +101,10 @@ public sealed class TyrianGame
                         break;
 
                     if (Varz.loadDestruct)
-                        Varz.loadDestruct = false; // TODO: JE_destructGame（毀滅模式）
+                    {
+                        Varz.loadDestruct = false;
+                        Destruct.JE_destructGame(); // 毀滅模式
+                    }
                     else
                     {
                         Tyrian2.JE_main(); // 進入關卡（骨架：捲動背景）
