@@ -6,17 +6,18 @@ namespace AprCSTyrian.Core;
 
 /// <summary>
 /// 移植對照工具（非遊戲邏輯）：與原版 instr/keylog.c 對稱的「重播 / 擷取」端。
-/// 用環境變數啟用，未設時完全 no-op（與正常遊戲行為一致）。
+/// 用環境變數啟用，未設時完全 no-op。
 ///
-///  - KEYLOG=1            擷取模式：同原版，有輸入才記 keylog.txt + 截圖（驗證 C# 端）
-///  - KEYLOG_REPLAY=PATH  重播模式：讀 PATH（資料夾或 keylog.txt）的原版 log，
-///                        逐幀以相同 scancode 覆寫 keysactive，並在「原版有記錄的相同 frame」截圖，
-///                        產出與原版 1:1 對應的 BMP 供逐張比對。
+///  - KEYLOG=1            擷取模式：每幀有輸入才記 keylog.txt + 截圖（驗證 C# 端）
+///  - KEYLOG_REPLAY=PATH  重播模式：讀原版 log，逐幀還原輸入並於相同 frame 截圖
 ///  - KEYLOG_DIR=DIR      輸出資料夾（預設 keylog_cs）
-///  - KEYLOG_NOSHOT=1     不存截圖（只記 keylog.txt）
-///  - KEYLOG_FORCE=1      擷取模式下每幀都捕捉（測試 / 定頻參考用）
+///  - KEYLOG_NOSHOT=1     不存截圖
+///  - KEYLOG_FORCE=1      擷取模式下每幀都捕捉
 ///
-/// frame 編號定義與原版一致：Video.JE_showVGA() 的絕對呼叫次數（每幀 +1）。
+/// 每幀記錄兩種輸入（選單讀佇列邊緣、關卡讀按住狀態，兩者都要）：
+///   H: 按住的鍵（keysactive 快照）        Q: 該幀 KeyDown 佇列事件 sym:scancode:mod（含重複）
+/// 重播時 keysactive 用 H 還原、佇列用 Q 注入（Keyboard.InjectQueueInput）。
+/// frame 編號 = Video.JE_showVGA() 絕對呼叫次數（與原版一致）。
 /// </summary>
 internal static unsafe class KeyLog
 {
@@ -27,8 +28,14 @@ internal static unsafe class KeyLog
     private static bool force = false;
     private static string outDir = "keylog_cs";
     private static StreamWriter? logw;
-    private static readonly Dictionary<long, int[]> replayInput = new();
+
+    // 重播資料：每幀的按住鍵 + 佇列事件
+    private static readonly Dictionary<long, int[]> replayHeld = new();
+    private static readonly Dictionary<long, (int sym, int sc, int mod)[]> replayQueue = new();
     private static readonly HashSet<long> captureFrames = new();
+
+    // 擷取模式：當幀 KeyDown 緩衝
+    private static readonly List<(int sym, int sc, int mod)> qbuf = new();
 
     private static bool EnvOn(string name)
     {
@@ -61,9 +68,9 @@ internal static unsafe class KeyLog
             if (mode == CAPTURE)
             {
                 logw = new StreamWriter(Path.Combine(outDir, "keylog.txt")) { AutoFlush = true };
-                logw.WriteLine("# C# port keylog — frame<TAB>scancode[,scancode...]");
+                logw.WriteLine("# C# port keylog v2 — frame<TAB>H:held<TAB>Q:sym:scancode:mod");
             }
-            Console.Error.WriteLine($"[KeyLog] mode={(mode == REPLAY ? "REPLAY" : "CAPTURE")} dir={outDir} replayFrames={replayInput.Count}");
+            Console.Error.WriteLine($"[KeyLog] mode={(mode == REPLAY ? "REPLAY" : "CAPTURE")} dir={outDir} replayFrames={captureFrames.Count}");
         }
     }
 
@@ -73,27 +80,46 @@ internal static unsafe class KeyLog
         foreach (string line in File.ReadAllLines(path))
         {
             if (line.Length == 0 || line[0] == '#') continue;
-            int tab = line.IndexOf('\t');
-            if (tab < 0) continue;
-            if (!long.TryParse(line.AsSpan(0, tab), out long f)) continue;
+            string[] parts = line.Split('\t');
+            if (parts.Length < 1 || !long.TryParse(parts[0], out long f)) continue;
 
-            string keys = line[(tab + 1)..].Trim();
-            var scs = new List<int>();
-            if (keys != "(none)")
+            var held = new List<int>();
+            var queue = new List<(int, int, int)>();
+            foreach (string field in parts)
             {
-                foreach (string part in keys.Split(','))
+                if (field.StartsWith("H:"))
                 {
-                    int colon = part.IndexOf(':'); // 格式 scancode:name（C# 端只取 scancode）
-                    ReadOnlySpan<char> num = colon >= 0 ? part.AsSpan(0, colon) : part.AsSpan();
-                    if (int.TryParse(num, out int sc)) scs.Add(sc);
+                    string body = field[2..];
+                    if (body.Length > 0)
+                        foreach (string s in body.Split(','))
+                            if (int.TryParse(s, out int sc)) held.Add(sc);
+                }
+                else if (field.StartsWith("Q:"))
+                {
+                    string body = field[2..];
+                    if (body.Length > 0)
+                        foreach (string ev in body.Split(','))
+                        {
+                            string[] t = ev.Split(':');
+                            if (t.Length == 3 && int.TryParse(t[0], out int sym) && int.TryParse(t[1], out int sc) && int.TryParse(t[2], out int mod))
+                                queue.Add((sym, sc, mod));
+                        }
                 }
             }
-            replayInput[f] = scs.ToArray();
+            replayHeld[f] = held.ToArray();
+            replayQueue[f] = queue.ToArray();
             captureFrames.Add(f);
         }
     }
 
-    /// <summary>在 Keyboard.handleSdlEvents 末尾呼叫：重播模式下用原版 log 覆寫 keysactive。</summary>
+    /// <summary>C# handleSdlEvents 的 KeyDown 呼叫：擷取模式下緩衝佇列事件。</summary>
+    public static void NoteKeyDown(int sym, int scancode, int mod)
+    {
+        if (mode == UNSET) Init();
+        if (mode == CAPTURE) qbuf.Add((sym, scancode, mod));
+    }
+
+    /// <summary>Keyboard.handleSdlEvents 末尾呼叫：重播模式下用原版 log 還原 keysactive + 注入佇列。</summary>
     public static void InjectInput()
     {
         if (mode == UNSET) Init();
@@ -101,13 +127,16 @@ internal static unsafe class KeyLog
 
         long f = frameNum + 1; // 即將處理的幀
         Array.Clear(Keyboard.keysactive, 0, Keyboard.keysactive.Length);
-        if (replayInput.TryGetValue(f, out int[]? scs))
-            foreach (int sc in scs)
+        if (replayHeld.TryGetValue(f, out int[]? held))
+            foreach (int sc in held)
                 if (sc >= 0 && sc < Keyboard.keysactive.Length)
                     Keyboard.keysactive[sc] = true;
+        if (replayQueue.TryGetValue(f, out (int sym, int sc, int mod)[]? q))
+            foreach (var e in q)
+                Keyboard.InjectQueueInput(e.sym, e.sc, e.mod);
     }
 
-    /// <summary>在 Video.JE_showVGA 末尾呼叫：前進 frame；於對應幀截圖 / 記錄。</summary>
+    /// <summary>Video.JE_showVGA 末尾呼叫：前進 frame；於對應幀截圖 / 記錄。</summary>
     public static void OnShowVGA()
     {
         if (mode == UNSET) Init();
@@ -116,17 +145,27 @@ internal static unsafe class KeyLog
 
         if (mode == CAPTURE)
         {
-            var sb = new StringBuilder();
-            bool any = false;
+            var heldSb = new StringBuilder();
+            bool hany = false;
             for (int sc = 0; sc < Keyboard.keysactive.Length; sc++)
                 if (Keyboard.keysactive[sc])
                 {
-                    if (any) sb.Append(',');
-                    sb.Append(sc);
-                    any = true;
+                    if (hany) heldSb.Append(',');
+                    heldSb.Append(sc);
+                    hany = true;
                 }
-            if (!any && !force) return; // 無輸入：只前進 frameNum
-            logw?.WriteLine($"{frameNum}\t{(any ? sb.ToString() : "(none)")}");
+
+            var qSb = new StringBuilder();
+            for (int i = 0; i < qbuf.Count; i++)
+            {
+                if (i > 0) qSb.Append(',');
+                qSb.Append(qbuf[i].sym).Append(':').Append(qbuf[i].sc).Append(':').Append(qbuf[i].mod);
+            }
+            bool qany = qbuf.Count > 0;
+            qbuf.Clear();
+
+            if (!hany && !qany && !force) return;
+            logw?.WriteLine($"{frameNum}\tH:{heldSb}\tQ:{qSb}");
             if (shots) SaveShot(frameNum);
         }
         else // REPLAY：在原版有記錄的相同 frame 截圖
@@ -142,32 +181,32 @@ internal static unsafe class KeyLog
         int w = vs.w, h = vs.h, pitch = vs.pitch;
         byte* px = vs.pixels;
 
-        int rowSize = (w * 3 + 3) & ~3;       // 4-byte 對齊
+        int rowSize = (w * 3 + 3) & ~3;
         int dataSize = rowSize * h;
         int fileSize = 54 + dataSize;
         var buf = new byte[fileSize];
 
         buf[0] = (byte)'B'; buf[1] = (byte)'M';
         WriteI32(buf, 2, fileSize);
-        WriteI32(buf, 10, 54);                 // pixel data offset
-        WriteI32(buf, 14, 40);                 // DIB header size
+        WriteI32(buf, 10, 54);
+        WriteI32(buf, 14, 40);
         WriteI32(buf, 18, w);
-        WriteI32(buf, 22, h);                  // 正值 = bottom-up
-        buf[26] = 1;                            // planes
-        buf[28] = 24;                           // bpp
+        WriteI32(buf, 22, h);
+        buf[26] = 1;
+        buf[28] = 24;
         WriteI32(buf, 34, dataSize);
 
         for (int y = 0; y < h; y++)
         {
             byte* srow = px + (long)y * pitch;
-            int drow = 54 + (h - 1 - y) * rowSize; // BMP bottom-up
+            int drow = 54 + (h - 1 - y) * rowSize;
             for (int x = 0; x < w; x++)
             {
-                uint rgb = Palette.rgb_palette[srow[x]]; // 0xFFRRGGBB
+                uint rgb = Palette.rgb_palette[srow[x]];
                 int o = drow + x * 3;
-                buf[o + 0] = (byte)(rgb & 0xFF);          // B
-                buf[o + 1] = (byte)((rgb >> 8) & 0xFF);   // G
-                buf[o + 2] = (byte)((rgb >> 16) & 0xFF);  // R
+                buf[o + 0] = (byte)(rgb & 0xFF);
+                buf[o + 1] = (byte)((rgb >> 8) & 0xFF);
+                buf[o + 2] = (byte)((rgb >> 16) & 0xFF);
             }
         }
 

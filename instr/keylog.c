@@ -1,15 +1,15 @@
 /* keylog.c — 見 keylog.h。
  *
- * 機制：
- *  - frame_num：JE_showVGA() 的絕對呼叫次數（= 已呈現幀數）。每幀都 +1。
- *  - 「有輸入才紀錄」：掃描 keysactive[]；若有任何鍵按下，
- *      → 寫一行到 keylog.txt：  <frame>\t<scancode:name>,<scancode:name>,...
- *      → 同時存一張截圖 frame_<frame>.bmp（由 VGAScreen 索引色 + rgb_palette 還原真彩）。
- *  - 沒有任何鍵按下的幀：只遞增 frame_num，不寫 log、不截圖。
+ * 每幀（frame_num = JE_showVGA 絕對呼叫次數）記錄：
+ *   H: keysactive 為 true 的 scancode 清單（按住狀態）
+ *   Q: 該幀緩衝到的 KeyDown 事件（sym:scancode:mod，含 SDL 鍵盤重複）
+ * 只有「H 非空 或 Q 非空」的幀才寫 keylog.txt + 存截圖（無輸入的幀只前進 frame_num）。
  *
- * 啟用：環境變數 KEYLOG=1（其他值/未設則整個機制為 no-op，與原版行為一致）。
- * 輸出目錄：KEYLOG_DIR（預設 "keylog"），相對於執行時的工作目錄。
- * 關閉截圖（只留 keylog.txt）：KEYLOG_NOSHOT=1。
+ * log 格式（每行一幀）：
+ *   <frame>\tH:<sc,sc,...>\tQ:<sym:sc:mod,sym:sc:mod,...>
+ *
+ * 啟用：KEYLOG=1。KEYLOG_DIR=輸出夾(預設 keylog)。KEYLOG_NOSHOT=1 不截圖。
+ *       KEYLOG_FORCE=1 每幀都捕捉（測試/定頻用）。
  */
 #include "keylog.h"
 #include "keyboard.h"   /* keysactive[] */
@@ -30,11 +30,28 @@
 
 static unsigned long frame_num = 0;
 static int enabled = -1;   /* -1=尚未判定, 0=停用, 1=啟用 */
-static int shots = 1;      /* 是否存截圖 */
-static int force = 0;      /* KEYLOG_FORCE=1：每幀都捕捉（測試/定頻參考用） */
+static int shots = 1;
+static int force = 0;
 static int initialized = 0;
 static FILE *kl_logf = NULL;
 static char outdir[256] = "keylog";
+
+/* 當幀 KeyDown 事件緩衝（含 repeat） */
+#define KL_MAXQ 64
+static struct { int sym, scancode, mod; } qbuf[KL_MAXQ];
+static int qcount = 0;
+
+static void check_enabled(void)
+{
+	if (enabled >= 0)
+		return;
+	const char *e = SDL_getenv("KEYLOG");
+	enabled = (e && *e && *e != '0') ? 1 : 0;
+	const char *ns = SDL_getenv("KEYLOG_NOSHOT");
+	shots = (ns && *ns && *ns != '0') ? 0 : 1;
+	const char *fc = SDL_getenv("KEYLOG_FORCE");
+	force = (fc && *fc && *fc != '0') ? 1 : 0;
+}
 
 static void ensure_init(void)
 {
@@ -55,9 +72,24 @@ static void ensure_init(void)
 	kl_logf = fopen(path, "w");
 	if (kl_logf)
 	{
-		fprintf(kl_logf, "# OpenTyrian keylog — 每幀有輸入才記錄\n");
-		fprintf(kl_logf, "# 欄位: frame<TAB>scancode:name[,scancode:name...]\n");
+		fprintf(kl_logf, "# OpenTyrian keylog v2 — 每幀有輸入才記錄\n");
+		fprintf(kl_logf, "# 欄位: frame<TAB>H:held_scancodes<TAB>Q:sym:scancode:mod(KeyDown,含repeat)\n");
 		fflush(kl_logf);
+	}
+}
+
+/* 由 instr/keyboard.c 的 SDL_KEYDOWN 呼叫（含 repeat 事件） */
+void keylog_keydown(int sym, int scancode, int mod)
+{
+	check_enabled();
+	if (!enabled)
+		return;
+	if (qcount < KL_MAXQ)
+	{
+		qbuf[qcount].sym = sym;
+		qbuf[qcount].scancode = scancode;
+		qbuf[qcount].mod = mod;
+		qcount++;
 	}
 }
 
@@ -93,44 +125,49 @@ static void save_screenshot(unsigned long n)
 
 void keylog_frame(void)
 {
-	if (enabled < 0)
-	{
-		const char *e = SDL_getenv("KEYLOG");
-		enabled = (e && *e && *e != '0') ? 1 : 0;
-		const char *ns = SDL_getenv("KEYLOG_NOSHOT");
-		shots = (ns && *ns && *ns != '0') ? 0 : 1;
-		const char *fc = SDL_getenv("KEYLOG_FORCE");
-		force = (fc && *fc && *fc != '0') ? 1 : 0;
-	}
+	check_enabled();
 	if (!enabled)
+	{
+		qcount = 0;
 		return;
+	}
 
 	frame_num++;
 
-	/* 收集目前按下的鍵（有輸入才紀錄） */
-	char keys[1024];
-	keys[0] = '\0';
-	int any = 0;
+	/* H: 按住的鍵 */
+	char held[1024];
+	held[0] = '\0';
+	int hany = 0;
 	for (int sc = 0; sc < SDL_NUM_SCANCODES; sc++)
 	{
 		if (keysactive[sc])
 		{
-			const char *nm = SDL_GetScancodeName((SDL_Scancode)sc);
-			char tmp[80];
-			snprintf(tmp, sizeof(tmp), "%s%d:%s", any ? "," : "", sc, (nm && *nm) ? nm : "?");
-			strncat(keys, tmp, sizeof(keys) - strlen(keys) - 1);
-			any = 1;
+			char tmp[24];
+			snprintf(tmp, sizeof(tmp), "%s%d", hany ? "," : "", sc);
+			strncat(held, tmp, sizeof(held) - strlen(held) - 1);
+			hany = 1;
 		}
 	}
-	if (!any && !force)
-		return; /* 此幀無輸入：只前進 frame_num（KEYLOG_FORCE=1 時仍捕捉，供測試/定頻參考用） */
-	if (!any)
-		strcpy(keys, "(none)");
+
+	/* Q: 當幀 KeyDown 佇列事件 */
+	char queue[2048];
+	queue[0] = '\0';
+	int qany = (qcount > 0);
+	for (int i = 0; i < qcount; i++)
+	{
+		char tmp[48];
+		snprintf(tmp, sizeof(tmp), "%s%d:%d:%d", i ? "," : "", qbuf[i].sym, qbuf[i].scancode, qbuf[i].mod);
+		strncat(queue, tmp, sizeof(queue) - strlen(queue) - 1);
+	}
+	qcount = 0; /* 沖出 */
+
+	if (!hany && !qany && !force)
+		return; /* 此幀無輸入：只前進 frame_num */
 
 	ensure_init();
 	if (kl_logf)
 	{
-		fprintf(kl_logf, "%lu\t%s\n", frame_num, keys);
+		fprintf(kl_logf, "%lu\tH:%s\tQ:%s\n", frame_num, held, queue);
 		fflush(kl_logf);
 	}
 	if (shots)

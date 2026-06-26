@@ -9,9 +9,9 @@ SDL="/c/ai_project/.net10/tool/SDL2"
 OUT="$ROOT/Build_orig"
 mkdir -p "$OUT"
 
-SRCS=$(ls "$ROOT"/sources/src/*.c | grep -v '/video.c$')
+SRCS=$(ls "$ROOT"/sources/src/*.c | grep -vE '/(video|keyboard)\.c$')
 
-clang $SRCS "$ROOT/instr/video.c" "$ROOT/instr/keylog.c" \
+clang $SRCS "$ROOT/instr/video.c" "$ROOT/instr/keyboard.c" "$ROOT/instr/keylog.c" \
   -DTARGET_WIN32 -DNDEBUG -DSDL_MAIN_HANDLED \
   -DTYRIAN_DIR='"."' -DOPENTYRIAN_VERSION='"opentyrian-keylog"' \
   -I"$ROOT/sources/src" -I"$ROOT/instr" -I"$SDL/include" \

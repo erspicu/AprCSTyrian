@@ -72,6 +72,17 @@ internal static class Keyboard
         Globals.Input.ShowCursor(false);
     }
 
+    /// <summary>移植對照重播：把一個 KeyDown 事件注入鍵盤佇列（等同原版 SDL_KEYDOWN 的 push）。</summary>
+    public static void InjectQueueInput(int sym, int scancode, int mod)
+    {
+        if (keyboardInputsCount < keyboardInputs.Length)
+        {
+            keyboardInputs[keyboardInputsBack] = new KeyboardInput { sym = sym, scancode = scancode, mod = mod, ch = 0 };
+            keyboardInputsBack = keyboardInputsBack == keyboardInputs.Length - 1 ? 0 : keyboardInputsBack + 1;
+            keyboardInputsCount += 1;
+        }
+    }
+
     public static bool keyboardHasInput() => keyboardInputsCount > 0;
 
     public static bool keyboardGetInput(out KeyboardInput out_input)
@@ -181,6 +192,8 @@ internal static class Keyboard
                     keyboardInputsBack = keyboardInputsBack == keyboardInputs.Length - 1 ? 0 : keyboardInputsBack + 1;
                     keyboardInputsCount += 1;
                 }
+
+                KeyLog.NoteKeyDown(ev.Sym, ev.Scancode, (int)ev.Mod); // 移植對照：擷取佇列事件
 
                 Mouse.mouseInactive = true;
                 break;
