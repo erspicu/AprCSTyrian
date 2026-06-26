@@ -73,6 +73,50 @@ internal static unsafe partial class GameMenu
         }
     }
 
+    private static string NameStr(byte* p)
+    {
+        int n = 0;
+        while (n < 30 && p[n] != 0) n++;
+        var c = new char[n];
+        for (int i = 0; i < n; ++i) c[i] = (char)p[i];
+        return new string(c);
+    }
+
+    /// <summary>對應 game_menu.c:JE_genItemMenu —— 建立升級子選單的物品清單。</summary>
+    public static void JE_genItemMenu(byte itemNum)
+    {
+        int mapIdx = itemAvailMap[itemNum - 2] - 1;
+        menuChoices[MENU_UPGRADE_SUB] = (byte)(Tyrian2.itemAvailMax[mapIdx] + 2);
+
+        int t3 = 2;
+        byte t2 = playeritem_map(ref Players.player[0].items, itemNum - 2);
+
+        Helptext.menuInt[5][0] = Helptext.menuInt[2][itemNum - 1];
+
+        int tw;
+        for (tw = 0; tw < Tyrian2.itemAvailMax[mapIdx]; tw++)
+        {
+            byte tmp = Tyrian2.itemAvail[mapIdx, tw];
+            string name = "";
+            switch (itemNum)
+            {
+                case 2: fixed (byte* p = Episodes.ships[tmp].name) name = NameStr(p); break;
+                case 3:
+                case 4: fixed (byte* p = Episodes.weaponPort[tmp].name) name = NameStr(p); break;
+                case 5: fixed (byte* p = Episodes.shields[tmp].name) name = NameStr(p); break;
+                case 6: fixed (byte* p = Episodes.powerSys[tmp].name) name = NameStr(p); break;
+                case 7:
+                case 8: fixed (byte* p = Episodes.options[tmp].name) name = NameStr(p); break;
+            }
+            if (tmp == t2)
+                t3 = tw + 2;
+            Helptext.menuInt[5][tw] = name;
+        }
+
+        Helptext.menuInt[5][tw] = Helptext.miscText[13];
+        curSel[MENU_UPGRADE_SUB] = (byte)t3;
+    }
+
     /// <summary>對應 game_menu.c:playeritem_map —— 玩家裝備第 i 項欄位的 ref（船/前後武器/護盾/動力/僚機×2）。</summary>
     public static ref byte playeritem_map(ref PlayerItems items, int i)
     {
