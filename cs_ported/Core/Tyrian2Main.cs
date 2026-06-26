@@ -155,7 +155,31 @@ internal static unsafe partial class Tyrian2
                 if (Varz.enemy[z].enemycycle < 1)
                     Varz.enemy[z].enemycycle = 1;
 
-                // 移動（最小：速度 + 隨背景下移）
+                // homing 加速：朝玩家調整速度（對應 JE_drawEnemy 188-214）
+                if (Varz.enemy[z].xaccel != 0 && (uint)Varz.enemy[z].xaccel - 89u > MtRand.mt_rand() % 11)
+                {
+                    if (player[0].x > Varz.enemy[z].ex)
+                    {
+                        if (Varz.enemy[z].exc < Varz.enemy[z].xaccel - 89) Varz.enemy[z].exc++;
+                    }
+                    else if (Varz.enemy[z].exc >= 0 || -Varz.enemy[z].exc < Varz.enemy[z].xaccel - 89)
+                    {
+                        Varz.enemy[z].exc--;
+                    }
+                }
+                if (Varz.enemy[z].yaccel != 0 && (uint)Varz.enemy[z].yaccel - 89u > MtRand.mt_rand() % 11)
+                {
+                    if (player[0].y > Varz.enemy[z].ey)
+                    {
+                        if (Varz.enemy[z].eyc < Varz.enemy[z].yaccel - 89) Varz.enemy[z].eyc++;
+                    }
+                    else if (Varz.enemy[z].eyc >= 0 || -Varz.enemy[z].eyc < Varz.enemy[z].yaccel - 89)
+                    {
+                        Varz.enemy[z].eyc--;
+                    }
+                }
+
+                // 移動（速度 + 隨背景下移）
                 Varz.enemy[z].ex += Varz.enemy[z].exc;
                 Varz.enemy[z].ey += (short)(Varz.enemy[z].eyc + Backgrnd.backMove);
 

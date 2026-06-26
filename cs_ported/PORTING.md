@@ -57,6 +57,7 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       +JE_helpBox/HBox)；`Menus` 文字占位（已驗證："Episode 1: Escape"/"Start New Game" 正確）
 - [x] **命令列參數**：`ArgParse`(arg_parse.c getopt 重實作)+`Params`(params.c JE_paramCheck)+`Xmas`(占位)；
       網路選項視為不支援；TyrianGame/Program 串接 argv
+- [x] 敵人 **homing AI**：xaccel/yaccel 朝玩家加速(JE_drawEnemy 188-214)，含 89 基準/強度封頂；驗證 exc/eyc 朝玩家
 - [x] **關卡完成流程(簡化)**：JE_main goto 式關卡迴圈；事件處理完 + 無敵人/敵彈 → 倒數過關 → mainLevel=nextLevel 載入下一關(章節結束回標題)
 - [x] **爆炸繪製**：`Tyrian2.JE_drawExplosions`(序列爆炸 rep_explosions + 一般 explosions 更新/繪製，explosionSpriteSheet 載入)；接入 JE_main
 - [x] **敵人發射敵彈 + 敵彈↔玩家碰撞**：enemyTurretFire(砲塔→weapons 建敵彈+瞄準玩家) + simulateEnemyShots(移動/homing/繪製/擊中) + JE_playerDamage(護盾→裝甲→死亡爆炸)；實機驗證 shield 20→15
