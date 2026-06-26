@@ -34,6 +34,7 @@ internal static unsafe partial class GameMenu
     public static byte curItemType, curItem, cursor;
     public static readonly CubeStruct[] cube = { new(), new(), new(), new() };
     public static readonly PlayerItems[] old_items = new PlayerItems[2];
+    public static bool leftPower, rightPower, rightPowerAfford;
 #pragma warning restore CS0649
 
     /// <summary>對應 game_menu.c:JE_drawMenuHeader —— 畫選單標題。</summary>
@@ -162,6 +163,147 @@ internal static unsafe partial class GameMenu
                 }
             }
         }
+    }
+
+    /// <summary>對應 game_menu.c:JE_weaponViewFrame —— 武器預覽單幀（建子彈/模擬/繪製 + power bar）。</summary>
+    public static void JE_weaponViewFrame()
+    {
+        var player = Players.player;
+        Vga256d.fill_rectangle_xy(Video.VGAScreen, 8, 8, 143, 182, 0);
+        Backgrnd.update_and_draw_starfield(Video.VGAScreen, 1);
+
+        player[0].mouseX = (ushort)player[0].x;
+        player[0].mouseY = (ushort)player[0].y;
+
+        for (int i = 0; i < 2; ++i)
+        {
+            if (Config.shotRepeat[i] > 0) { Config.shotRepeat[i]--; }
+            else
+            {
+                int item = player[0].items.weapon[i].id;
+                int item_power = player[0].items.weapon[i].power - 1;
+                int item_mode = (i == Players.REAR_WEAPON) ? (int)player[0].weapon_mode - 1 : 0;
+                Varz.b = Shots.player_shot_create((ushort)item, (uint)i, (ushort)player[0].x, (ushort)player[0].y, player[0].mouseX, player[0].mouseY, Episodes.weaponPort[item].op[item_mode * 11 + item_power], 1);
+            }
+        }
+
+        int lsk = player[0].items.sidekick[Players.LEFT_SIDEKICK];
+        if (Episodes.options[lsk].wport > 0)
+        {
+            if (Config.shotRepeat[Config.SHOT_LEFT_SIDEKICK] > 0) { Config.shotRepeat[Config.SHOT_LEFT_SIDEKICK]--; }
+            else
+            {
+                int x = player[0].sidekick[Players.LEFT_SIDEKICK].x, y = player[0].sidekick[Players.LEFT_SIDEKICK].y;
+                Varz.b = Shots.player_shot_create(Episodes.options[lsk].wport, (uint)Config.SHOT_LEFT_SIDEKICK, (ushort)x, (ushort)y, player[0].mouseX, player[0].mouseY, Episodes.options[lsk].wpnum, 1);
+            }
+        }
+
+        int rsk = player[0].items.sidekick[Players.RIGHT_SIDEKICK];
+        if (Episodes.options[rsk].tr == 2)
+        {
+            player[0].sidekick[Players.RIGHT_SIDEKICK].x = player[0].x;
+            player[0].sidekick[Players.RIGHT_SIDEKICK].y = Math.Max(10, player[0].y - 20);
+        }
+        else
+        {
+            player[0].sidekick[Players.RIGHT_SIDEKICK].x = 72 + 15;
+            player[0].sidekick[Players.RIGHT_SIDEKICK].y = 120;
+        }
+
+        if (Episodes.options[rsk].wport > 0)
+        {
+            if (Config.shotRepeat[Config.SHOT_RIGHT_SIDEKICK] > 0) { Config.shotRepeat[Config.SHOT_RIGHT_SIDEKICK]--; }
+            else
+            {
+                int x = player[0].sidekick[Players.RIGHT_SIDEKICK].x, y = player[0].sidekick[Players.RIGHT_SIDEKICK].y;
+                Varz.b = Shots.player_shot_create(Episodes.options[rsk].wport, (uint)Config.SHOT_RIGHT_SIDEKICK, (ushort)x, (ushort)y, player[0].mouseX, player[0].mouseY, Episodes.options[rsk].wpnum, 1);
+            }
+        }
+
+        Shots.simulate_player_shots();
+        Sprites.blit_sprite(Video.VGAScreenSeg, 0, 0, (uint)Sprites.OPTION_SHAPES, 12); // 升級介面
+
+        // Power Bar
+        Config.power += Config.powerAdd;
+        if (Config.power > 900) Config.power = 900;
+
+        int temp = (int)Config.power / 10;
+        for (temp = 147 - temp; temp <= 146; temp++)
+        {
+            int temp2 = 113 + (146 - temp) / 9 + 2;
+            int temp3 = (temp + 1) % 6;
+            if (temp3 == 1) temp2 += 3;
+            else if (temp3 != 0) temp2 += 2;
+
+            Vga256d.JE_pix(Video.VGAScreen, 141, temp, (byte)(temp2 - 3));
+            Vga256d.JE_pix(Video.VGAScreen, 142, temp, (byte)(temp2 - 3));
+            Vga256d.JE_pix(Video.VGAScreen, 143, temp, (byte)(temp2 - 2));
+            Vga256d.JE_pix(Video.VGAScreen, 144, temp, (byte)(temp2 - 1));
+            Vga256d.fill_rectangle_xy(Video.VGAScreen, 145, temp, 149, temp, (byte)temp2);
+        }
+
+        temp = 147 - ((int)Config.power / 10);
+        int tp2 = 113 + (146 - temp) / 9 + 4;
+        Vga256d.JE_pix(Video.VGAScreen, 141, temp - 1, (byte)(tp2 - 1));
+        Vga256d.JE_pix(Video.VGAScreen, 142, temp - 1, (byte)(tp2 - 1));
+        Vga256d.JE_pix(Video.VGAScreen, 143, temp - 1, (byte)(tp2 - 1));
+        Vga256d.JE_pix(Video.VGAScreen, 144, temp - 1, (byte)(tp2 - 1));
+        Vga256d.fill_rectangle_xy(Video.VGAScreen, 145, temp - 1, 149, temp - 1, (byte)tp2);
+
+        Config.lastPower = (uint)temp;
+    }
+
+    /// <summary>對應 game_menu.c:JE_weaponSimUpdate —— 武器模擬畫面更新（含升/降級成本/POWER 顯示）。</summary>
+    public static void JE_weaponSimUpdate()
+    {
+        var player = Players.player;
+        JE_weaponViewFrame();
+
+        if ((curSel[MENU_UPGRADES] == 3 || curSel[MENU_UPGRADES] == 4) &&
+            curSel[MENU_UPGRADE_SUB] < menuChoices[MENU_UPGRADE_SUB] &&
+            Tyrian2.itemAvail[itemAvailMap[curSel[MENU_UPGRADES] - 2] - 1, curSel[MENU_UPGRADE_SUB] - 2] != 0)
+        {
+            if (leftPower)
+                Fonthand.JE_outText(Video.VGAScreen, 26, 137, $"{Mainint.downgradeCost}", 1, 4);
+            else
+                Sprites.blit_sprite(Video.VGAScreenSeg, 24, 149, (uint)Sprites.OPTION_SHAPES, 13);
+
+            if (rightPower)
+            {
+                if (!rightPowerAfford)
+                {
+                    Fonthand.JE_outText(Video.VGAScreen, 108, 137, $"{Mainint.upgradeCost}", 7, 4);
+                    Sprites.blit_sprite(Video.VGAScreenSeg, 119, 149, (uint)Sprites.OPTION_SHAPES, 14);
+                }
+                else
+                {
+                    Fonthand.JE_outText(Video.VGAScreen, 108, 137, $"{Mainint.upgradeCost}", 1, 4);
+                }
+            }
+            else
+            {
+                Sprites.blit_sprite(Video.VGAScreenSeg, 119, 149, (uint)Sprites.OPTION_SHAPES, 14);
+            }
+
+            int temp = player[0].items.weapon[curSel[MENU_UPGRADES] - 3].power;
+            for (int x = 1; x <= temp; x++)
+            {
+                Vga256d.fill_rectangle_xy(Video.VGAScreen, 39 + x * 6, 151, 39 + x * 6 + 4, 151, 251);
+                Vga256d.JE_pix(Video.VGAScreen, 39 + x * 6, 151, 252);
+                Vga256d.fill_rectangle_xy(Video.VGAScreen, 39 + x * 6, 152, 39 + x * 6 + 4, 164, 250);
+                Vga256d.fill_rectangle_xy(Video.VGAScreen, 39 + x * 6, 165, 39 + x * 6 + 4, 165, 249);
+            }
+
+            Fonthand.JE_outText(Video.VGAScreen, 58, 137, $"POWER: {temp}", 15, 4);
+        }
+        else
+        {
+            leftPower = false;
+            rightPower = false;
+            Sprites.blit_sprite(Video.VGAScreenSeg, 20, 146, (uint)Sprites.OPTION_SHAPES, 17);
+        }
+
+        JE_drawItem(1, player[0].items.ship, player[0].x - 5, player[0].y - 7);
     }
 
     /// <summary>對應 game_menu.c:JE_initWeaponView —— 初始化武器預覽（玩家居中、清子彈、起星空）。</summary>
