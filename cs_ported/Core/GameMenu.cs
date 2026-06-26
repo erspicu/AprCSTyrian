@@ -85,6 +85,84 @@ internal static unsafe partial class GameMenu
     public static readonly int[,] planetDotY = new int[5, 10];
 #pragma warning restore CS0649
 
+    /// <summary>對應 game_menu.c:JE_drawLines —— 畫網格背景線。</summary>
+    public static void JE_drawLines(SDL_Surface surface, bool dark)
+    {
+        int tempX2 = -10, tempY2 = 0;
+
+        int tempW = 0;
+        for (int x = 0; x < 20; x++)
+        {
+            tempW += 15;
+            int tempX = tempW - tempX2;
+            if (tempX > 18 && tempX < 135)
+            {
+                if (dark) Vga256d.JE_rectangle(surface, tempX + 1, 0, tempX + 1, 199, 32 + 3);
+                else Vga256d.JE_rectangle(surface, tempX, 0, tempX, 199, 32 + 5);
+            }
+        }
+
+        tempW = 0;
+        for (int y = 0; y < 20; y++)
+        {
+            tempW += 15;
+            int tempY = tempW - tempY2;
+            if (tempY > 15 && tempY < 169)
+            {
+                if (dark) Vga256d.JE_rectangle(surface, 0, tempY + 1, 319, tempY + 1, 32 + 3);
+                else Vga256d.JE_rectangle(surface, 0, tempY, 319, tempY, 32 + 5);
+
+                int tempW2 = 0;
+                for (int x = 0; x < 20; x++)
+                {
+                    tempW2 += 15;
+                    int tempX = tempW2 - tempX2;
+                    if (tempX > 18 && tempX < 135)
+                        Vga256d.JE_pix3(surface, tempX, tempY, 32 + 6);
+                }
+            }
+        }
+    }
+
+    /// <summary>對應 game_menu.c:JE_drawNavLines —— 畫星圖導航網格（隨 nav 位置捲動）。</summary>
+    public static void JE_drawNavLines(bool dark)
+    {
+        int tempX2 = tempNavX >> 1, tempY2 = tempNavY >> 1;
+
+        int tempW = 0;
+        for (int x = 1; x <= 20; x++)
+        {
+            tempW += 15;
+            int tempX = tempW - tempX2;
+            if (tempX > 18 && tempX < 135)
+            {
+                if (dark) Vga256d.JE_rectangle(Video.VGAScreen, tempX + 1, 16, tempX + 1, 169, 1);
+                else Vga256d.JE_rectangle(Video.VGAScreen, tempX, 16, tempX, 169, 5);
+            }
+        }
+
+        tempW = 0;
+        for (int y = 1; y <= 20; y++)
+        {
+            tempW += 15;
+            int tempY = tempW - tempY2;
+            if (tempY > 15 && tempY < 169)
+            {
+                if (dark) Vga256d.JE_rectangle(Video.VGAScreen, 19, tempY + 1, 135, tempY + 1, 1);
+                else Vga256d.JE_rectangle(Video.VGAScreen, 8, tempY, 160, tempY, 5);
+
+                int tempW2 = 0;
+                for (int x = 0; x < 20; x++)
+                {
+                    tempW2 += 15;
+                    int tempX = tempW2 - tempX2;
+                    if (tempX > 18 && tempX < 135)
+                        Vga256d.JE_pix3(Video.VGAScreen, tempX, tempY, 7);
+                }
+            }
+        }
+    }
+
     /// <summary>對應 game_menu.c:JE_partWay —— 兩星球間第 dist 個點的座標插值。</summary>
     public static int JE_partWay(int start, int finish, byte dots, byte dist)
         => (finish - start) / (dots + 2) * (dist + 1) + start;
