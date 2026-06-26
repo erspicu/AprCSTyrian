@@ -121,9 +121,44 @@ internal static unsafe partial class Mainint
         if (!Config.onePlayerAction && !Config.twoPlayerMode)
         {
             Fonthand.JE_outTextGlow(seg, 30, 120, Helptext.miscText[3]); // Cubes
-            if (Config.cubeMax == 0)
+
+            if (Config.cubeMax > 0)
+            {
+                if (Config.cubeMax > Config.cubeList.Length)
+                    Config.cubeMax = (ushort)Config.cubeList.Length;
+
+                if (Nortsong.frameCountMax != 0)
+                    Nortsong.frameCountMax = 1;
+
+                for (int t = 1; t <= Config.cubeMax; t++)
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_ITEM);
+                    int x = 20 + 30 * t, y = 135;
+                    JE_drawCube(seg, x, y, 9, 0);
+                    Video.JE_showVGA();
+
+                    for (int i = -15; i <= 10; i++)
+                    {
+                        Nortsong.setFrameCount(Nortsong.frameCountMax);
+                        Sprites.blit_sprite_hv(seg, x, y, (uint)Sprites.OPTION_SHAPES, 25, 9, (sbyte)i);
+                        Video.JE_showVGA();
+                        if (Keyboard.waitUntilGetInputOrElapsed())
+                            Nortsong.frameCountMax = 0;
+                    }
+                    for (int i = 10; i >= 0; i--)
+                    {
+                        Nortsong.setFrameCount(Nortsong.frameCountMax);
+                        Sprites.blit_sprite_hv(seg, x, y, (uint)Sprites.OPTION_SHAPES, 25, 9, (sbyte)i);
+                        Video.JE_showVGA();
+                        if (Keyboard.waitUntilGetInputOrElapsed())
+                            Nortsong.frameCountMax = 0;
+                    }
+                }
+            }
+            else
+            {
                 Fonthand.JE_outTextGlow(seg, 50, 135, Helptext.miscText[14]); // None
-            // TODO: cube 收集動畫
+            }
         }
 
         Nortsong.frameCountMax = 6;
@@ -134,6 +169,14 @@ internal static unsafe partial class Mainint
 
         Palette.fade_black(15);
         Video.JE_clr256(Video.VGAScreen);
+    }
+
+    /// <summary>對應 mainint.c:JE_drawCube —— 畫一個資料方塊（含陰影）。</summary>
+    public static void JE_drawCube(SDL_Surface screen, int x, int y, byte filter, sbyte brightness)
+    {
+        Sprites.blit_sprite_dark(screen, x + 4, y + 4, (uint)Sprites.OPTION_SHAPES, 25, false);
+        Sprites.blit_sprite_dark(screen, x + 3, y + 3, (uint)Sprites.OPTION_SHAPES, 25, false);
+        Sprites.blit_sprite_hv(screen, x, y, (uint)Sprites.OPTION_SHAPES, 25, filter, brightness);
     }
 
     private static bool totalEnemyZero() => Tyrian2.totalEnemy == 0;
