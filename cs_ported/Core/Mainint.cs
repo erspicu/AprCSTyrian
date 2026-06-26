@@ -1903,10 +1903,19 @@ internal static unsafe partial class Mainint
             }
         }
 
-        Nortsong.frameCountMax = 6;
-        Fonthand.JE_outTextGlow(seg, 90, Config.twoPlayerMode ? 150 : 160, Helptext.miscText[4]);
+        bool slow;
+        if (Nortsong.frameCountMax != 0)
+        {
+            Nortsong.frameCountMax = 6;
+            slow = true;
+        }
+        else
+        {
+            slow = false;
+        }
+        Fonthand.JE_outTextGlow(seg, 90, Config.twoPlayerMode ? 150 : 160, Helptext.miscText[5 - 1]);
 
-        if (!Params.constantPlay)
+        if (!Params.constantPlay && !(Nortsong.frameCountMax == 0 && slow))
             Keyboard.waitUntilGetInput();
 
         Palette.fade_black(15);
