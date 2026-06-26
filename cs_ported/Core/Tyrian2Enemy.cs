@@ -371,6 +371,7 @@ internal static unsafe partial class Tyrian2
     {
         var player = Players.player;
         Backgrnd.tempBackMove = Backgrnd.backMove;
+        enemyOnScreen = 0;
 
         for (int z = 0; z < 100; z++)
         {
@@ -519,7 +520,12 @@ internal static unsafe partial class Tyrian2
                 continue;
             }
 
-            enemyTurretFire(z);
+            // 僅在畫面內且非受損態才計數並發射（對應 JE_drawEnemy 339-351）
+            if (Varz.enemy[z].ex > -24 && Varz.enemy[z].ex < 296 && !Varz.enemy[z].edamaged)
+            {
+                enemyOnScreen++;
+                enemyTurretFire(z);
+            }
         }
     }
 
