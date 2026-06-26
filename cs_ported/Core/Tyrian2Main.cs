@@ -221,46 +221,9 @@ internal static unsafe partial class Tyrian2
                     }
                     else if (armorleft != 255)
                     {
-                        // 敵人死亡：計分 + 爆炸 + 後繼敵人(enemydie)
-                        if (Varz.enemy[b].evalue > 0 && Varz.enemy[b].evalue < 10000)
-                        {
-                            if (Varz.enemy[b].evalue == 1)
-                                Config.cubeMax++;
-                            else
-                                Players.player[0].cash += (uint)Varz.enemy[b].evalue;
-                        }
-
-                        ushort edie = Varz.enemy[b].enemydie;
-                        int deadEx = Varz.enemy[b].ex, deadEy = Varz.enemy[b].ey, deadOfs = Varz.enemy[b].mapoffset;
-
-                        if (Episodes.enemyDat[Varz.enemy[b].enemytype].esize == 1)
-                        {
-                            Varz.JE_setupExplosionLarge(Varz.enemy[b].enemyground, Varz.enemy[b].explonum, ax, Varz.enemy[b].ey);
-                            Varz.soundQueue[6] = (byte)Sndmast.S_EXPLOSION_9;
-                        }
-                        else
-                        {
-                            Varz.JE_setupExplosion(ax, Varz.enemy[b].ey, 0, 1, false, false);
-                            Varz.soundQueue[6] = (byte)Sndmast.S_EXPLOSION_8;
-                        }
-
-                        Varz.enemyAvail[b] = 1;
-
-                        // 生成後繼敵人（多階段敵人，如船艦被擊毀後分裂）
-                        if (edie > 0 && !(Config.superArcadeMode != VarzConst.SA_NONE && Episodes.enemyDat[edie].value == 30000))
-                        {
-                            int offset = b - (b % 25);
-                            if (Episodes.enemyDat[edie].value > 30000)
-                                offset = 0;
-                            int nb = Tyrian2.JE_newEnemy(offset, edie, 0);
-                            if (nb != 0)
-                            {
-                                Varz.enemy[nb - 1].scoreitem = Varz.enemy[nb - 1].evalue != 0;
-                                Varz.enemy[nb - 1].ex = (short)deadEx;
-                                Varz.enemy[nb - 1].ey = (short)deadEy;
-                                Varz.enemy[nb - 1].mapoffset = (ushort)deadOfs;
-                            }
-                        }
+                        // 敵人死亡：連動群組一起被擊毀（計分/爆炸/enemydie 各自處理）
+                        byte tlink = (byte)(Varz.enemy[b].linknum == 0 ? 255 : Varz.enemy[b].linknum);
+                        Tyrian2.JE_killEnemyGroup(b, tlink, 1);
                     }
 
                     if (!infiniteShot)

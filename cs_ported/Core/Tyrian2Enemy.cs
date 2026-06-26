@@ -320,6 +320,90 @@ internal static unsafe partial class Tyrian2
         }
     }
 
+    /// <summary>
+    /// 連動敵人群組死亡（對應 tyrian2.c 1620-1718）：被擊毀敵人 b 及其 linknum 相符的編組敵人
+    /// 一起死亡，各自生成 enemydie 後繼、計分、爆炸。temp=被擊敵人 linknum（0→255）。
+    /// </summary>
+    public static void JE_killEnemyGroup(int b, byte temp, byte playerNum)
+    {
+        var player = Players.player;
+
+        if (temp == 254 && superEnemy254Jump > 0)
+            JE_eventJump(superEnemy254Jump);
+
+        for (int temp2 = 0; temp2 < 100; temp2++)
+        {
+            if (Varz.enemyAvail[temp2] == 1)
+                continue;
+
+            int temp3 = Varz.enemy[temp2].linknum;
+            bool match = (temp2 == b) || (temp == 254) ||
+                ((temp != 255) && ((temp == temp3) || (temp - 100 == temp3) ||
+                                   ((temp3 > 40) && (temp3 / 20 == temp / 20) && (temp3 <= temp))));
+            if (!match)
+                continue;
+
+            int enemyScreenX = Varz.enemy[temp2].ex + Varz.enemy[temp2].mapoffset;
+
+            if (Varz.enemy[temp2].special)
+                globalFlags[Varz.enemy[temp2].flagnum - 1] = Varz.enemy[temp2].setto;
+
+            // 後繼敵人 enemydie
+            ushort edie = Varz.enemy[temp2].enemydie;
+            if (edie > 0 && !(Config.superArcadeMode != VarzConst.SA_NONE && Episodes.enemyDat[edie].value == 30000))
+            {
+                int offset = temp2 - (temp2 % 25);
+                if (Episodes.enemyDat[edie].value > 30000)
+                    offset = 0;
+                int nb = JE_newEnemy(offset, edie, 0);
+                if (nb != 0)
+                {
+                    Varz.enemy[nb - 1].scoreitem = Varz.enemy[nb - 1].evalue != 0;
+                    Varz.enemy[nb - 1].ex = Varz.enemy[temp2].ex;
+                    Varz.enemy[nb - 1].ey = Varz.enemy[temp2].ey;
+                }
+            }
+
+            // 計分
+            if (Varz.enemy[temp2].evalue > 0 && Varz.enemy[temp2].evalue < 10000)
+            {
+                if (Varz.enemy[temp2].evalue == 1)
+                    Config.cubeMax++;
+                else
+                    player[Config.galagaMode ? 0 : playerNum - 1].cash += (uint)Varz.enemy[temp2].evalue;
+            }
+
+            if (Varz.enemy[temp2].edlevel == -1 && temp == temp3)
+            {
+                Varz.enemy[temp2].edlevel = 0;
+                Varz.enemyAvail[temp2] = 2;
+                Varz.enemy[temp2].egr[0] = Varz.enemy[temp2].edgr;
+                Varz.enemy[temp2].ani = 1;
+                Varz.enemy[temp2].aniactive = 0;
+                Varz.enemy[temp2].animax = 0;
+                Varz.enemy[temp2].animin = 1;
+                Varz.enemy[temp2].edamaged = true;
+                Varz.enemy[temp2].enemycycle = 1;
+            }
+            else
+            {
+                Varz.enemyAvail[temp2] = 1;
+                enemyKilled++;
+            }
+
+            if (Episodes.enemyDat[Varz.enemy[temp2].enemytype].esize == 1)
+            {
+                Varz.JE_setupExplosionLarge(Varz.enemy[temp2].enemyground, Varz.enemy[temp2].explonum, enemyScreenX, Varz.enemy[temp2].ey);
+                Varz.soundQueue[6] = (byte)Sndmast.S_EXPLOSION_9;
+            }
+            else
+            {
+                Varz.JE_setupExplosion(enemyScreenX, Varz.enemy[temp2].ey, 0, 1, false, false);
+                Varz.soundQueue[6] = (byte)Sndmast.S_EXPLOSION_8;
+            }
+        }
+    }
+
     /// <summary>對應 JE_newEnemy：在 [enemyOffset, +25) 找空槽生成敵人，回傳 slot+1（0=無空槽）。</summary>
     public static int JE_newEnemy(int enemyOffset, ushort eDatI, short uniqueShapeTableI)
     {
