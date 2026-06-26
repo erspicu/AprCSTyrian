@@ -1,0 +1,265 @@
+namespace AprCSTyrian.Core;
+
+/// <summary>
+/// 移植 sources/src/tyrian2.c —— **逐步移植中**。本檔先移植 titleScreen（標題畫面/主選單）。
+/// 選單動作的子畫面（newGame/loadScreen/highScore/helpSystem/setupMenu/super* 等）暫為 stub，
+/// 選取後回到標題；Quit/ESC/右鍵 可正常結束。遊戲主迴圈 JE_main、tyrian2 其餘待後續。
+/// </summary>
+internal static unsafe partial class Tyrian2
+{
+    private static void CopyScreen(SDL_Surface dst, SDL_Surface src)
+    {
+        long n = (long)src.pitch * src.h;
+        Buffer.MemoryCopy(src.pixels, dst.pixels, n, n);
+    }
+
+    public static bool titleScreen()
+    {
+        const int MENU_ITEM_NEW_GAME = 0, MENU_ITEM_LOAD_GAME = 1, MENU_ITEM_HIGH_SCORES = 2,
+                  MENU_ITEM_INSTRUCTIONS = 3, MENU_ITEM_SETUP = 4, MENU_ITEM_DEMO = 5, MENU_ITEM_QUIT = 6;
+
+        Helptext.menuText[4] = "Setup"; // override "Ordering Info"
+
+        if (Sprites.shopSpriteSheet.data == null)
+            Sprites.JE_loadCompShapes(ref Sprites.shopSpriteSheet, '1'); // mouse pointer sprites
+
+        bool restart = true;
+        int selectedIndex = MENU_ITEM_NEW_GAME;
+        int[] specialNameProgress = new int[VarzConst.SA_ENGAGE];
+
+        int xCenter = Video.VGAScreen.w / 2;
+        const int yMenuItems = 104, hMenuItem = 13;
+        int[] wMenuItem = new int[Helptext.menuText.Length];
+
+        for (; ; )
+        {
+            Nortsong.setFrameCount(1);
+
+            if (restart)
+            {
+                Loudness.play_song(Musmast.SONG_TITLE);
+
+                Picload.JE_loadPic(Video.VGAScreen, 4, false);
+
+                FontDraw.drawFontHvShadow(Video.VGAScreen, 2, 192, Opentyr.opentyrian_version, Font.FONT_SMALL, 15, 0, false, 1);
+
+                if (Varz.moveTyrianLogoUp)
+                {
+                    CopyScreen(Video.VGAScreen2, Video.VGAScreen);
+                    Sprites.blit_sprite(Video.VGAScreenSeg, 11, 62, Sprites.PLANET_SHAPES, 146); // tyrian logo
+                    Palette.fade_palette(Palette.colors, 10, 0, 255 - 16);
+
+                    for (int y = 60; y >= 4; y -= 2)
+                    {
+                        Nortsong.setFrameCount(2);
+                        CopyScreen(Video.VGAScreen, Video.VGAScreen2);
+                        Sprites.blit_sprite(Video.VGAScreenSeg, 11, y, Sprites.PLANET_SHAPES, 146);
+                        Video.JE_showVGA();
+                        Keyboard.waitUntilElapsed();
+                    }
+                    Varz.moveTyrianLogoUp = false;
+                }
+                else
+                {
+                    Sprites.blit_sprite(Video.VGAScreenSeg, 11, 4, Sprites.PLANET_SHAPES, 146);
+                    Palette.fade_palette(Palette.colors, 10, 0, 255 - 16);
+                }
+
+                // Draw menu items.
+                for (int i = 0; i < Helptext.menuText.Length; ++i)
+                {
+                    string text = Helptext.menuText[i];
+                    wMenuItem[i] = Fonthand.JE_textWidth(text, (uint)Font.FONT_NORMAL);
+                    int x = xCenter - wMenuItem[i] / 2;
+                    int y = yMenuItems + hMenuItem * i;
+
+                    FontDraw.drawFontHv(Video.VGAScreen, x - 1, y - 1, text, Font.FONT_NORMAL, 15, -10);
+                    FontDraw.drawFontHv(Video.VGAScreen, x + 1, y + 1, text, Font.FONT_NORMAL, 15, -10);
+                    FontDraw.drawFontHv(Video.VGAScreen, x + 1, y - 1, text, Font.FONT_NORMAL, 15, -10);
+                    FontDraw.drawFontHv(Video.VGAScreen, x - 1, y + 1, text, Font.FONT_NORMAL, 15, -10);
+                    FontDraw.drawFontHv(Video.VGAScreen, x, y, text, Font.FONT_NORMAL, 15, -3);
+                }
+
+                CopyScreen(Video.VGAScreen2, Video.VGAScreen);
+                Mouse.mouseCursor = Mouse.MOUSE_POINTER_NORMAL;
+                Palette.fade_palette(Palette.colors, 20, 255 - 16 + 1, 255);
+                restart = false;
+            }
+
+            CopyScreen(Video.VGAScreen, Video.VGAScreen2);
+
+            // Highlight selected menu item.
+            FontDraw.drawFontHvAligned(Video.VGAScreen, Video.VGAScreen.w / 2, yMenuItems + hMenuItem * selectedIndex,
+                Helptext.menuText[selectedIndex], Font.FONT_NORMAL, FontAlignment.ALIGN_CENTER, 15, -1);
+
+            Mouse.JE_mouseStartFilter(0xF0);
+            Video.JE_showVGA();
+            Mouse.JE_mouseReplace();
+
+            uint idleStartTick = Globals.Clock.Ticks;
+
+            while (true)
+            {
+                if (Globals.Clock.Ticks - idleStartTick > 30000) // demo after 30s idle
+                {
+                    Palette.fade_black(15);
+                    Varz.play_demo = true;
+                    return true;
+                }
+
+                Keyboard.waitUntilElapsed();
+                if (Keyboard.hasInput(InputFlags.INPUT_ANY))
+                    break;
+                Nortsong.setFrameCount(1);
+            }
+
+            bool action = false, done = false;
+
+            if (Keyboard.mouseGetInput(InputFlags.INPUT_ANY, out MouseInput mouseInput))
+            {
+                for (int i = 0; i < Helptext.menuText.Length; ++i)
+                {
+                    int xMenuItem = xCenter - wMenuItem[i] / 2;
+                    if (mouseInput.x >= xMenuItem && mouseInput.x < xMenuItem + wMenuItem[i])
+                    {
+                        int yMenuItem = yMenuItems + hMenuItem * i;
+                        if (mouseInput.y >= yMenuItem && mouseInput.y < yMenuItem + hMenuItem)
+                        {
+                            if (selectedIndex != i)
+                            {
+                                Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                                selectedIndex = i;
+                            }
+                            if (mouseInput.button == SdlKeys.SDL_BUTTON_LEFT)
+                                action = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (mouseInput.button == SdlKeys.SDL_BUTTON_RIGHT)
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING);
+                    done = true;
+                }
+            }
+            else if (Keyboard.keyboardGetInput(out KeyboardInput keyboardInput))
+            {
+                switch (keyboardInput.scancode)
+                {
+                    case SdlKeys.SDL_SCANCODE_UP:
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                        selectedIndex = selectedIndex == 0 ? Helptext.menuText.Length - 1 : selectedIndex - 1;
+                        break;
+                    case SdlKeys.SDL_SCANCODE_DOWN:
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                        selectedIndex = selectedIndex == Helptext.menuText.Length - 1 ? 0 : selectedIndex + 1;
+                        break;
+                    case SdlKeys.SDL_SCANCODE_SPACE:
+                    case SdlKeys.SDL_SCANCODE_RETURN:
+                        action = true;
+                        break;
+                    case SdlKeys.SDL_SCANCODE_ESCAPE:
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING);
+                        done = true;
+                        break;
+                }
+
+                char sym = char.ToUpperInvariant((char)keyboardInput.sym);
+                for (int i = 0; i < VarzConst.SA_ENGAGE; i++)
+                {
+                    string sn = Helptext.specialName[i] ?? "";
+                    char exp = specialNameProgress[i] < sn.Length ? sn[specialNameProgress[i]] : '\0';
+                    if (specialNameProgress[i] >= 9 || sym != exp)
+                    {
+                        specialNameProgress[i] = 0;
+                        continue;
+                    }
+                    specialNameProgress[i]++;
+                    char nxt = specialNameProgress[i] < sn.Length ? sn[specialNameProgress[i]] : '\0';
+                    if (nxt == '\0')
+                    {
+                        if (i + 1 == VarzConst.SA_DESTRUCT)
+                        {
+                            Palette.fade_black(10);
+                            Varz.loadDestruct = true;
+                            return true;
+                        }
+                        else if (i + 1 == VarzConst.SA_ENGAGE)
+                        {
+                            Nortsong.JE_playSampleNum((byte)Sndmast.V_DATA_CUBE);
+                            JE_whoa();
+                            Palette.set_colors(new SDL_Color(0, 0, 0), 0, 255);
+                            newSuperTyrianGame();
+                            return true;
+                        }
+                        else
+                        {
+                            Palette.fade_black(10);
+                            if (newSuperArcadeGame(i))
+                                return true;
+                            restart = true;
+                        }
+                    }
+                }
+            }
+
+            if (action)
+            {
+                Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+
+                switch (selectedIndex)
+                {
+                    case MENU_ITEM_NEW_GAME:
+                        Palette.fade_black(15);
+                        if (newGame()) return true;
+                        restart = true;
+                        break;
+                    case MENU_ITEM_LOAD_GAME:
+                        Palette.fade_black(15);
+                        if (JE_loadScreen()) return true;
+                        restart = true;
+                        break;
+                    case MENU_ITEM_HIGH_SCORES:
+                        Palette.fade_black(15);
+                        JE_highScoreScreen();
+                        restart = true;
+                        break;
+                    case MENU_ITEM_INSTRUCTIONS:
+                        Palette.fade_black(15);
+                        JE_helpSystem(1);
+                        restart = true;
+                        break;
+                    case MENU_ITEM_SETUP:
+                        Palette.fade_black(15);
+                        setupMenu();
+                        restart = true;
+                        break;
+                    case MENU_ITEM_DEMO:
+                        Palette.fade_black(15);
+                        Varz.play_demo = true;
+                        return true;
+                    case MENU_ITEM_QUIT:
+                        Palette.fade_black(15);
+                        return false;
+                }
+            }
+
+            if (done)
+            {
+                Palette.fade_black(15);
+                return false;
+            }
+        }
+    }
+
+    // === 子畫面 stub（待後續移植；目前回到標題） ===
+    private static bool newGame() => false;
+    private static bool JE_loadScreen() => false;
+    private static void JE_highScoreScreen() { }
+    private static void JE_helpSystem(byte startTopic) { }
+    private static void setupMenu() { }
+    private static void JE_whoa() { }
+    private static void newSuperTyrianGame() { }
+    private static bool newSuperArcadeGame(int i) => false;
+}

@@ -128,5 +128,8 @@ internal static partial class Varz
     public static ushort x, y;
     public static readonly byte[] soundQueue = new byte[8]; // [0..7]
     public static bool play_demo, record_demo, stopped_demo;
+    public static bool gameLoaded, firstGameOver, enemyStillExploding;
+    public static bool moveTyrianLogoUp, skipStarShowVGA;
+    public static bool loadDestruct;
 #pragma warning restore CS0649
 }

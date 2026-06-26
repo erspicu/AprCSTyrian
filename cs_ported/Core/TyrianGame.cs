@@ -60,56 +60,38 @@ public sealed class TyrianGame
                 Loudness.set_volume((byte)Nortsong.tyrMusicVolume, (byte)Nortsong.fxVolume);
                 Nortsong.loadSndFile(false);
                 Loudness.load_music();
-                Loudness.play_song(2); // 播放一首（OPL FM 合成）；不可用 0：song_playing 初值即 0 會被守衛跳過載入
             }
             else
                 BuildSyntheticPalette();
 
-            uint frame = 0;
-
             if (dataFound)
             {
-                // 套用一組真實調色盤並啟動 3D 星空（背景）。
-                Palette.set_palette(Palette.palettes[0], 0, 255);
-                Starlib.JE_starlib_init();
+                // 真正的標題畫面/主選單流程（對應 opentyr.c main 的標題迴圈）。
+                // titleScreen 回 true（New Game/Demo/特殊碼，子畫面尚未移植）時回到標題；
+                // Quit/ESC/右鍵回 false → 結束。
+                Mainint.JE_initPlayerData();
+                while (Tyrian2.titleScreen())
+                {
+                    // JE_main（遊戲主迴圈）尚未移植：暫時回到標題。
+                    Mainint.JE_initPlayerData();
+                }
             }
             else
-                Palette.set_palette(Palette.colors, 0, 255);
-
-            while (true)
             {
-                Keyboard.handleSdlEvents(); // 處理輸入（視窗關閉會丟出 TyrianHaltException）
-                if (Keyboard.keysactive[SdlKeys.SDL_SCANCODE_ESCAPE])
-                    break;
-
-                // 測試音效：按 Space/Enter 觸發 SFX（驗證 loudness 混音管線發聲）。
-                while (Keyboard.keyboardGetInput(out KeyboardInput ki))
+                // 無資料檔：合成調色盤 + 測試圖樣（ESC/關閉結束）。
+                Palette.set_palette(Palette.colors, 0, 255);
+                uint frame = 0;
+                while (true)
                 {
-                    if (ki.scancode == SdlKeys.SDL_SCANCODE_SPACE || ki.scancode == SdlKeys.SDL_SCANCODE_RETURN)
-                        Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
-                }
-
-                if (dataFound)
-                {
-                    // 動態星空背景（starlib.c）。
-                    Starlib.starLibMain();
-
-                    // 疊上真實字型標題。
-                    FontDraw.drawFontHvShadowAligned(Video.VGAScreen, 160, 80, "APRCSTYRIAN",
-                        Font.FONT_LARGE, FontAlignment.ALIGN_CENTER, 14, 4, true, 2);
-                    FontDraw.drawFontHvShadowAligned(Video.VGAScreen, 160, 108, ".NET 10 C# PORT",
-                        Font.FONT_SMALL, FontAlignment.ALIGN_CENTER, 6, 4, true, 1);
-                }
-                else
-                {
+                    Keyboard.handleSdlEvents();
+                    if (Keyboard.keysactive[SdlKeys.SDL_SCANCODE_ESCAPE])
+                        break;
                     RenderTestPattern(frame);
+                    Video.JE_showVGA();
+                    frame++;
+                    Nortsong.setFrameCount(1);
+                    Nortsong.delayUntilElapsed();
                 }
-
-                Video.JE_showVGA();
-
-                frame++;
-                Nortsong.setFrameCount(1);
-                Nortsong.delayUntilElapsed();
             }
         }
         finally
