@@ -7,6 +7,87 @@ namespace AprCSTyrian.Core;
 /// </summary>
 internal static unsafe partial class Tyrian2
 {
+    /// <summary>對應 tyrian2.c:JE_starShowVGA —— 把 game_screen 的 playfield(寬264,偏移+24)合成到 VGAScreenSeg 並顯示；右側 ~56px 為 HUD 介面面板。</summary>
+    public static void JE_starShowVGA()
+    {
+        if (!playerEndLevel && !Varz.skipStarShowVGA)
+        {
+            byte* s = Video.VGAScreenSeg.pixels;
+            byte* src = Video.game_screen.pixels + 24;
+            int segPitch = Video.VGAScreenSeg.pitch;
+            int gsPitch = Video.game_screen.pitch;
+
+            if (Config.smoothScroll)
+            {
+                Nortsong.delayUntilElapsed();
+                Nortsong.setFrameCount(Nortsong.frameCountMax);
+            }
+
+            if (Config.starShowVGASpecialCode == 1)
+            {
+                src += gsPitch * 183;
+                for (int y = 0; y < 184; y++)
+                {
+                    Buffer.MemoryCopy(src, s, 264, 264);
+                    s += segPitch;
+                    src -= gsPitch;
+                }
+            }
+            else if (Config.starShowVGASpecialCode == 2 && Config.processorType >= 2)
+            {
+                int lighty = 172 - Players.player[0].y;
+                int lightx = 281 - Players.player[0].x;
+                for (int y = 184; y != 0; y--)
+                {
+                    if (lighty > y)
+                    {
+                        for (int x = 320 - 56; x != 0; x--)
+                        {
+                            *s = (byte)((*src & 0xf0) | ((*src >> 2) & 0x03));
+                            s++; src++;
+                        }
+                    }
+                    else
+                    {
+                        for (int x = 320 - 56; x != 0; x--)
+                        {
+                            int lightdist = Math.Abs(lightx - x) + lighty;
+                            if (lightdist < y)
+                                *s = *src;
+                            else if (lightdist - y <= 5)
+                                *s = (byte)((*src & 0xf0) | (((*src & 0x0f) + (3 * (5 - (lightdist - y)))) / 4));
+                            else
+                                *s = (byte)((*src & 0xf0) | ((*src & 0x0f) >> 2));
+                            s++; src++;
+                        }
+                    }
+                    s += 56 + segPitch - 320;
+                    src += 56 + gsPitch - 320;
+                }
+            }
+            else
+            {
+                for (int y = 0; y < 184; y++)
+                {
+                    Buffer.MemoryCopy(src, s, 264, 264);
+                    s += segPitch;
+                    src += gsPitch;
+                }
+            }
+
+            Video.JE_showVGA();
+        }
+
+        Keyboard.handleSdlEvents();
+    }
+
+    private static string CStrBytes(byte[] b)
+    {
+        int n = 0; while (n < b.Length && b[n] != 0) n++;
+        var c = new char[n]; for (int i = 0; i < n; ++i) c[i] = (char)b[i];
+        return new string(c);
+    }
+
     public static void JE_main()
     {
         var player = Players.player;
@@ -101,6 +182,11 @@ internal static unsafe partial class Tyrian2
         // 套用目前調色盤（多為過場最後設定的關卡調色盤）
         Palette.set_palette(Palette.colors, 0, 255);
 
+        // HUD 介面面板（對應 tyrian2.c 765-768）：載入介面圖到 VGAScreenSeg + 選項圖示 + 關卡名
+        Picload.JE_loadPic(Video.VGAScreenSeg, Config.twoPlayerMode ? (byte)6 : (byte)3, false);
+        Varz.JE_drawOptions();
+        Fonthand.JE_outText(Video.VGAScreenSeg, 268, Config.twoPlayerMode ? 76 : 118, CStrBytes(Config.levelName), 12, 4);
+
         Keyboard.keyboardClearInput();
 
         // === 最小遊戲主迴圈骨架：捲動三層背景 ===
@@ -118,6 +204,13 @@ internal static unsafe partial class Tyrian2
             // --- 事件系統：觸發到期事件（對應 tyrian2.c 1252）---
             while (eventRec[eventLoc - 1].eventtime <= curLoc && eventLoc <= maxEvent)
                 JE_eventSystem();
+
+            // === HUD 護盾/裝甲畫到 VGAScreenSeg 介面面板（對應 tyrian2.c 1131 VGAScreen=VGAScreenSeg）===
+            Video.VGAScreen = Video.VGAScreenSeg;
+            Varz.JE_drawShield();
+            Varz.JE_drawArmor();
+            // === playfield 改畫到 game_screen（對應 tyrian2.c 1249 VGAScreen=game_screen）===
+            Video.VGAScreen = Video.game_screen;
 
             // --- BACKGROUND 1 ---
             if (Backgrnd.map1YDelayMax > 1 && Backgrnd.backMove < 2)
@@ -274,12 +367,8 @@ internal static unsafe partial class Tyrian2
                 if (Config.power > 900) Config.power = 900;
             }
 
-            // === boss 血條 + HUD ===
+            // === boss 血條 + 分數（畫在 playfield/game_screen 上；對應 tyrian2.c 2326-2328）===
             Tyrian2.draw_boss_bar();
-
-            // === HUD：護盾/裝甲 bar + 分數/特殊武器/超級炸彈 ===
-            Varz.JE_drawShield();
-            Varz.JE_drawArmor();
             Mainint.JE_inGameDisplays();
 
             // === 關卡結束偵測（簡化）：所有事件處理完 + 場上無敵人/敵彈 → 倒數 → 過關 ===
@@ -303,7 +392,9 @@ internal static unsafe partial class Tyrian2
                 }
             }
 
-            Video.JE_showVGA();
+            // === 合成 playfield(game_screen,寬264偏移+24) → VGAScreenSeg + 顯示（對應 tyrian2.c 2330-2332）===
+            Video.VGAScreen = Video.VGAScreenSeg;
+            JE_starShowVGA();
             Nortsong.delayUntilElapsed();
 
             if (reallyEndLevel)
