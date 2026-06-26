@@ -77,4 +77,7 @@ internal static class Nortsong
         if (diff >= 0)
             Globals.Clock.Delay(((uint)diff + half) >> 10);
     }
+
+    /// <summary>播放音效（暫行 no-op，音訊待 Phase D；對應 nortsong.c:JE_playSampleNum）。</summary>
+    public static void JE_playSampleNum(byte samplenum) { /* TODO: Phase D 音訊 */ }
 }

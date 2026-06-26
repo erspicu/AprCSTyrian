@@ -23,6 +23,17 @@ internal static class Keyboard
         Globals.Input.Poll();
     }
 
+    /// <summary>
+    /// 對應 keyboard.c:waitUntilGetInputOrElapsed（暫行）：泵入事件並延遲到 frame 結束，
+    /// 回傳是否「提前收到輸入」。目前僅以 QuitRequested 視為輸入；完整版待中性事件佇列。
+    /// </summary>
+    public static bool waitUntilGetInputOrElapsed()
+    {
+        Globals.Input.Poll();
+        Nortsong.delayUntilElapsed();
+        return Globals.Input.QuitRequested;
+    }
+
     /// <summary>是否要求離開（視窗 X / Alt+F4）。</summary>
     public static bool QuitRequested => Globals.Input.QuitRequested;
 

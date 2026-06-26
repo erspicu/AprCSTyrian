@@ -31,7 +31,10 @@ public sealed class TyrianGame
         {
             bool dataFound = CFile.data_dir().Length != 0;
             if (dataFound)
+            {
                 Palette.JE_loadPals();
+                Sprites.JE_loadMainShapeTables("tyrian.shp"); // 字型/介面/option sprites
+            }
             else
                 BuildSyntheticPalette();
 
@@ -59,6 +62,12 @@ public sealed class TyrianGame
                         picNumber = picNumber % Pcxmast.PCX_NUM + 1;
                         Picload.JE_loadPic(Video.VGAScreen, (byte)picNumber, true);
                     }
+
+                    // 疊上真實字型文字（驗證 sprite + font 管線）。
+                    FontDraw.drawFontHvShadowAligned(Video.VGAScreen, 160, 2, "APRCSTYRIAN",
+                        Font.FONT_LARGE, FontAlignment.ALIGN_CENTER, 14, 4, true, 2);
+                    FontDraw.drawFontHvShadowAligned(Video.VGAScreen, 160, 184, ".NET 10 C# PORT",
+                        Font.FONT_SMALL, FontAlignment.ALIGN_CENTER, 6, 4, true, 1);
                 }
                 else
                 {
