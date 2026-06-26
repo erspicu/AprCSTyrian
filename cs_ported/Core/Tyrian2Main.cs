@@ -48,6 +48,9 @@ internal static unsafe partial class Tyrian2
         Backgrnd.starfield_speed = 1;
 
         // 玩家船艦圖/初值
+        if (Sprites.explosionSpriteSheet.data == null)
+            Sprites.JE_loadCompShapes(ref Sprites.explosionSpriteSheet, '6'); // 爆炸圖
+
         Varz.JE_getShipInfo();
         for (int i = 0; i < 2; ++i)
         {
@@ -257,6 +260,9 @@ internal static unsafe partial class Tyrian2
 
             // === 敵彈：移動/繪製 + 擊中玩家 ===
             Tyrian2.simulateEnemyShots();
+
+            // === 爆炸更新/繪製 ===
+            Tyrian2.JE_drawExplosions();
 
             // === HUD：護盾/裝甲 bar + 分數/特殊武器/超級炸彈 ===
             Varz.JE_drawShield();

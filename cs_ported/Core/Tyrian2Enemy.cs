@@ -423,6 +423,77 @@ internal static unsafe partial class Tyrian2
         }
     }
 
+    /// <summary>序列爆炸 + 一般爆炸的更新/繪製。對應 tyrian2.c 1888-1961。</summary>
+    public static void JE_drawExplosions()
+    {
+        Varz.enemyStillExploding = false;
+        for (int i = 0; i < VarzConst.MAX_REPEATING_EXPLOSIONS; i++)
+        {
+            if (Varz.rep_explosions[i].ttl != 0)
+            {
+                Varz.enemyStillExploding = true;
+                if (Varz.rep_explosions[i].delay > 0)
+                {
+                    Varz.rep_explosions[i].delay--;
+                    continue;
+                }
+
+                Varz.rep_explosions[i].y += (uint)(Backgrnd.backMove2 + 1);
+                int tempX = (int)Varz.rep_explosions[i].x + (int)(MtRand.mt_rand() % 24) - 12;
+                int tempY = (int)Varz.rep_explosions[i].y + (int)(MtRand.mt_rand() % 27) - 24;
+
+                if (Varz.rep_explosions[i].big)
+                {
+                    Varz.JE_setupExplosionLarge(false, 2, tempX, tempY);
+                    if (Varz.rep_explosions[i].ttl == 1 || MtRand.mt_rand() % 5 == 1)
+                        Varz.soundQueue[7] = (byte)Sndmast.S_EXPLOSION_11;
+                    else
+                        Varz.soundQueue[6] = (byte)Sndmast.S_EXPLOSION_9;
+                    Varz.rep_explosions[i].delay = (uint)(4 + (MtRand.mt_rand() % 3));
+                }
+                else
+                {
+                    Varz.JE_setupExplosion(tempX, tempY, 0, 1, false, false);
+                    Varz.soundQueue[5] = (byte)Sndmast.S_EXPLOSION_4;
+                    Varz.rep_explosions[i].delay = 3;
+                }
+
+                Varz.rep_explosions[i].ttl--;
+            }
+        }
+
+        for (int j = 0; j < VarzConst.MAX_EXPLOSIONS; j++)
+        {
+            if (Varz.explosions[j].ttl != 0)
+            {
+                if (!Varz.explosions[j].fixedPosition)
+                {
+                    Varz.explosions[j].sprite++;
+                    Varz.explosions[j].y += (short)Tyrian2.explodeMove;
+                }
+                else if (Varz.explosions[j].followPlayer)
+                {
+                    Varz.explosions[j].x += (short)Tyrian2.explosionFollowAmountX;
+                    Varz.explosions[j].y += (short)Tyrian2.explosionFollowAmountY;
+                }
+                Varz.explosions[j].y += Varz.explosions[j].deltaY;
+
+                if (Varz.explosions[j].y > 200 - 14)
+                {
+                    Varz.explosions[j].ttl = 0;
+                }
+                else
+                {
+                    if (Config.explosionTransparent)
+                        Sprites.blit_sprite2_blend(Video.VGAScreen, Varz.explosions[j].x, Varz.explosions[j].y, Sprites.explosionSpriteSheet, (uint)(Varz.explosions[j].sprite + 1));
+                    else
+                        Sprites.blit_sprite2(Video.VGAScreen, Varz.explosions[j].x, Varz.explosions[j].y, Sprites.explosionSpriteSheet, (uint)(Varz.explosions[j].sprite + 1));
+                    Varz.explosions[j].ttl--;
+                }
+            }
+        }
+    }
+
     private static float difficultyValue(short value)
     {
         switch ((int)Config.difficultyLevel)
