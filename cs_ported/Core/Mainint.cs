@@ -46,6 +46,105 @@ internal static unsafe partial class Mainint
     // 網路未移植（守則 8），這些請求旗標僅供 isNetworkGame（const false）分支引用。
     public static bool pauseRequest, skipLevelRequest, helpRequest, nortShipRequest;
 
+    /// <summary>對應 mainint.c:JE_highScoreCheck —— 高分檢查/輸入畫面。尚未移植，no-op 空殼。</summary>
+    public static void JE_highScoreCheck() { /* TODO: 待移植 */ }
+
+    /// <summary>對應 mainint.c:JE_playCredits —— 過關後跑製作名單。尚未移植，no-op 空殼。</summary>
+    public static void JE_playCredits() { /* TODO: 待移植 */ }
+
+    /// <summary>
+    /// 對應 mainint.c:JE_outCharGlow —— 逐字發光浮現動畫文字（過場警告用）。
+    /// 忠實移植 mainint.c 81-168。
+    /// </summary>
+    public static void JE_outCharGlow(ushort x, ushort y, string s)
+    {
+        int maxloc, loc, z;
+        sbyte[] glowcol = new sbyte[60];  /* [1..60] */
+        sbyte[] glowcolc = new sbyte[60]; /* [1..60] */
+        ushort[] textloc = new ushort[60]; /* [1..60] */
+        byte bank;
+
+        bank = Fonthand.warningRed ? (byte)7 : (Tyrian2.useLastBank ? (byte)15 : (byte)14);
+
+        if (s.Length == 0 || s[0] == '\0')
+            return;
+
+        if (Nortsong.frameCountMax == 0)
+        {
+            Fonthand.JE_textShade(Video.VGAScreen, x, y, s, bank, 0, (uint)Fonthand.PART_SHADE);
+            Video.JE_showVGA();
+        }
+        else
+        {
+            maxloc = s.Length;
+            for (z = 0; z < 60; z++)
+            {
+                glowcol[z] = -8;
+                glowcolc[z] = 1;
+            }
+
+            loc = x;
+            for (z = 0; z < maxloc; z++)
+            {
+                textloc[z] = (ushort)loc;
+
+                int sprite_id_init = Fonthand.fontMap[(byte)s[z]];
+
+                if (s[z] == ' ')
+                    loc += 6;
+                else if (sprite_id_init != -1)
+                    loc += Sprites.sprite(Sprites.TINY_FONT, (uint)sprite_id_init).width + 1;
+            }
+
+            for (loc = 0; (uint)loc < (uint)(s.Length + 28); loc++)
+            {
+                if (Keyboard.ESCPressed)
+                    break;
+
+                Nortsong.setFrameCount(1);
+
+                int sprite_id = -1;
+
+                for (z = loc - 28; z <= loc; z++)
+                {
+                    if (z >= 0 && z < maxloc)
+                    {
+                        sprite_id = Fonthand.fontMap[(byte)s[z]];
+
+                        if (sprite_id != -1)
+                        {
+                            Sprites.blit_sprite_hv(Video.VGAScreen, textloc[z], y, Sprites.TINY_FONT, (uint)sprite_id, bank, glowcol[z]);
+
+                            glowcol[z] += glowcolc[z];
+                            if (glowcol[z] > 9)
+                                glowcolc[z] = -1;
+                        }
+                    }
+                }
+                if (sprite_id != -1 && --z < maxloc)
+                    Sprites.blit_sprite_dark(Video.VGAScreen, textloc[z] + 1, y + 1, Sprites.TINY_FONT, (uint)sprite_id, true);
+
+                Video.JE_showVGA();
+
+                for (ushort frameCount = Nortsong.frameCountMax; frameCount > 0; --frameCount)
+                {
+                    if (Fonthand.levelWarningDisplay)
+                        Fonthand.JE_updateWarning(Video.VGAScreen);
+
+                    Keyboard.waitUntilElapsed();
+
+                    if (Keyboard.getInput())
+                        Nortsong.frameCountMax = 0;
+
+                    if (Keyboard.ESCPressed)
+                        break;
+
+                    Nortsong.setFrameCount(1);
+                }
+            }
+        }
+    }
+
     /// <summary>對應 mainint.c:JE_gammaCheck —— F11 切換 gamma 等級(0-3)、重載調色盤並套用。</summary>
     public static bool JE_gammaCheck()
     {

@@ -59,8 +59,125 @@ internal static unsafe partial class Tyrian2
 
     // === 待移植的重型子函式（暫 stub） ===
     // JE_itemScreen 商店主迴圈已移植 → GameMenu.JE_itemScreen()（'I' 命令直接呼叫）
-    private static void JE_nextEpisode() { /* TODO: 進入下一章節 */ }
-    private static void JE_displayText() { /* TODO: 過場警告文字顯示 */ }
+
+    /// <summary>對應 mainint.c:JE_nextEpisode —— 進入下一章節（過關後）。忠實移植 mainint.c 950-1008。</summary>
+    private static void JE_nextEpisode()
+    {
+        CopyToBytes(Config.lastLevelName, "Completed");
+
+        if (Episodes.episodeNum == Episodes.initial_episode_num && !Config.gameHasRepeated && Episodes.episodeNum != Episodes.EPISODE_AVAILABLE &&
+            !Config.isNetworkGame && !Params.constantPlay)
+        {
+            Mainint.JE_highScoreCheck();
+        }
+
+        uint newEpisode = Episodes.JE_findNextEpisode();
+
+        if (Episodes.jumpBackToEpisode1)
+        {
+            if (Episodes.episodeNum > 2 &&
+                !Params.constantPlay)
+            {
+                Mainint.JE_playCredits();
+            }
+
+            // randomly give player the SuperCarrot
+            if ((MtRand.mt_rand() % 6) == 0)
+            {
+                Players.player[0].items.ship = 2;                                  // SuperCarrot
+                Players.player[0].items.weapon[Players.FRONT_WEAPON].id = 23;      // Banana Blast
+                Players.player[0].items.weapon[Players.REAR_WEAPON].id = 24;       // Banana Blast Rear
+
+                for (uint i = 0; i < 2 /* COUNTOF(player[0].items.weapon) */; ++i)
+                    Players.player[0].items.weapon[(int)i].power = 1;
+
+                Players.player[1].items.weapon[Players.REAR_WEAPON].id = 24;        // Banana Blast Rear
+
+                Players.player[0].last_items = Players.player[0].items;
+            }
+        }
+
+        if (newEpisode != Episodes.episodeNum)
+            Episodes.JE_initEpisode((int)newEpisode);
+
+        Varz.gameLoaded = true;
+        Config.mainLevel = Episodes.FIRST_LEVEL;
+        Config.saveLevel = Episodes.FIRST_LEVEL;
+
+        Loudness.play_song(26);
+
+        Video.JE_clr256(Video.VGAScreen);
+        Array.Copy(Palette.palettes[6 - 1], Palette.colors, Palette.colors.Length);
+
+        Fonthand.JE_dString(Video.VGAScreen, Fonthand.JE_fontCenter(Menus.episode_name[Episodes.episodeNum], (uint)Sprites.SMALL_FONT_SHAPES), 130, Menus.episode_name[Episodes.episodeNum], (uint)Sprites.SMALL_FONT_SHAPES);
+        Fonthand.JE_dString(Video.VGAScreen, Fonthand.JE_fontCenter(Helptext.miscText[5 - 1], (uint)Sprites.SMALL_FONT_SHAPES), 185, Helptext.miscText[5 - 1], (uint)Sprites.SMALL_FONT_SHAPES);
+
+        Video.JE_showVGA();
+        Palette.fade_palette(Palette.colors, 15, 0, 255);
+
+        if (!Params.constantPlay)
+            Keyboard.waitUntilGetInput();
+
+        Palette.fade_black(15);
+    }
+
+    /// <summary>對應 tyrian2.c:JE_displayText —— 過場警告文字捲動顯示。忠實移植 tyrian2.c 3745-3799。</summary>
+    private static void JE_displayText()
+    {
+        /* Display Warning Text */
+        ushort tempY = 55;
+        if (Fonthand.warningRed)
+        {
+            tempY = 2;
+        }
+        for (Varz.temp = 0; Varz.temp < Fonthand.levelWarningLines; Varz.temp++)
+        {
+            if (!Keyboard.ESCPressed)
+            {
+                Mainint.JE_outCharGlow(10, tempY, CStr(Fonthand.levelWarningText[Varz.temp]));
+
+                if (haltGame)
+                {
+                    Varz.JE_tyrianHalt(5);
+                }
+
+                tempY += 10;
+            }
+        }
+
+        bool slow;
+        if (Nortsong.frameCountMax != 0)
+        {
+            Nortsong.frameCountMax = 6;
+            slow = true;
+        }
+        else
+        {
+            slow = false;
+        }
+        Varz.tempW = 184;
+        if (Fonthand.warningRed)
+            Varz.tempW = 7 * 16 + 6;
+
+        Mainint.JE_outCharGlow((ushort)Fonthand.JE_fontCenter(Helptext.miscText[4], (uint)Sprites.TINY_FONT), Varz.tempW, Helptext.miscText[4]);
+
+        while (true)
+        {
+            Nortsong.setFrameCount(1);
+
+            if (Fonthand.levelWarningDisplay)
+                Fonthand.JE_updateWarning(Video.VGAScreen);
+
+            if (Keyboard.waitUntilGetInputOrElapsed())
+                break;
+
+            if ((Nortsong.frameCountMax == 0 && slow) || Keyboard.ESCPressed)
+                break;
+        }
+
+        Fonthand.levelWarningDisplay = false;
+    }
+
     private static void load_next_demo() { /* TODO: demo 載入 */ }
     private static uint JE_totalScore(int p) => Players.player[p].cash; // 近似（JE_getValue 未移植）
 
