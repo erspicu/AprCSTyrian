@@ -41,6 +41,9 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       `Nortsong`(loadSndFile/JE_playSampleNum/JE_changeVolume)、
       **`Opl`(opl.c DOSBox OPL2 FM 模擬器)**、**`Lds`(lds_play.c .lds 音樂播放器，驅動 OPL)**
       → OPL FM 音樂 + 取樣音效皆可發聲；IAudioBackend Lock/Unlock，SdlAudio mono 44100
+- [x] **完整輸入（中性事件佇列）**：`Keyboard`(keyboard.c)、`Mouse`(mouse.c)、`Joystick`(stub)、
+      `SdlKeys`(SDL scancode/keymod/KEY_COMBO)、`PlatformEvent`/`IInputBackend.PollEvent`(App SdlInput 翻譯)
+      → Core 保持 SDL-free；IVideoBackend 加 MapWindowToScreen/ToggleFullscreen；移除 GameKey
 - 註：config 序列化、varz 重度函式、episodes 資料載入、MegaData 地圖結構待後續
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`

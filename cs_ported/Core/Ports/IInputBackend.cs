@@ -1,19 +1,17 @@
 namespace AprCSTyrian.Core.Ports;
 
 /// <summary>
-/// 輸入埠 (Port)。Core 每幀呼叫 <see cref="Poll"/> 後查詢狀態。
+/// 輸入埠 (Port)：薄薄的 SDL 事件來源。Core 的 keyboard.c 透過 <see cref="PollEvent"/>
+/// 抽取中性事件（對應 SDL_PollEvent），並自行維護按鍵/滑鼠狀態。
 /// </summary>
 public interface IInputBackend
 {
-    /// <summary>抽取/處理本幀累積的輸入事件，更新內部狀態。</summary>
-    void Poll();
+    /// <summary>抽取下一個待處理事件（對應 SDL_PollEvent）。無事件時回傳 false。</summary>
+    bool PollEvent(out PlatformEvent e);
 
-    /// <summary>使用者要求關閉（視窗 X、Alt+F4 等）。</summary>
-    bool QuitRequested { get; }
+    /// <summary>啟用/停用相對滑鼠模式（對應 SDL_SetRelativeMouseMode）。</summary>
+    void SetRelativeMouseMode(bool enable);
 
-    /// <summary>指定按鍵目前是否按住。</summary>
-    bool IsKeyDown(GameKey key);
-
-    /// <summary>指定按鍵是否在本幀剛被按下（邊緣觸發）。</summary>
-    bool WasKeyPressed(GameKey key);
+    /// <summary>顯示/隱藏系統滑鼠游標（對應 SDL_ShowCursor）。</summary>
+    void ShowCursor(bool show);
 }

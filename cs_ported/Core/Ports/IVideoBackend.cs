@@ -21,4 +21,10 @@ public interface IVideoBackend : IDisposable
     /// 每個 byte 為調色盤索引。
     /// </summary>
     void Present(ReadOnlySpan<byte> indexedPixels);
+
+    /// <summary>把視窗座標轉成 320×200 遊戲座標（對應 video.c:mapWindowPointToScreen）。</summary>
+    void MapWindowToScreen(ref int x, ref int y);
+
+    /// <summary>切換全螢幕（對應 video.c:toggle_fullscreen）。</summary>
+    void ToggleFullscreen();
 }

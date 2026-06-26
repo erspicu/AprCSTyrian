@@ -27,6 +27,8 @@ public sealed class TyrianGame
         Globals.Init(_platform, _dataDir, _userDir);
 
         Video.init_video();
+        Keyboard.init_keyboard();
+        Joystick.init_joysticks();
         try
         {
             bool dataFound = CFile.data_dir().Length != 0;
@@ -45,7 +47,6 @@ public sealed class TyrianGame
             else
                 BuildSyntheticPalette();
 
-            var input = _platform.Input;
             uint frame = 0;
 
             if (dataFound)
@@ -59,13 +60,16 @@ public sealed class TyrianGame
 
             while (true)
             {
-                input.Poll();
-                if (input.QuitRequested || input.IsKeyDown(GameKey.Escape))
+                Keyboard.handleSdlEvents(); // 處理輸入（視窗關閉會丟出 TyrianHaltException）
+                if (Keyboard.keysactive[SdlKeys.SDL_SCANCODE_ESCAPE])
                     break;
 
                 // 測試音效：按 Space/Enter 觸發 SFX（驗證 loudness 混音管線發聲）。
-                if (dataFound && (input.WasKeyPressed(GameKey.Fire) || input.WasKeyPressed(GameKey.Enter)))
-                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+                while (Keyboard.keyboardGetInput(out KeyboardInput ki))
+                {
+                    if (ki.scancode == SdlKeys.SDL_SCANCODE_SPACE || ki.scancode == SdlKeys.SDL_SCANCODE_RETURN)
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+                }
 
                 if (dataFound)
                 {

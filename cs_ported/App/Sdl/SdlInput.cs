@@ -1,76 +1,90 @@
+using System.Text;
 using AprCSTyrian.Core.Ports;
 using SDL2;
 
 namespace AprCSTyrian.App.Sdl;
 
 /// <summary>
-/// <see cref="IInputBackend"/> 的 SDL2 實作：每幀抽取事件佇列，
-/// 維護鍵盤的「按住」與「本幀剛按下」狀態，並把 SDL scancode 對應到 <see cref="GameKey"/>。
+/// <see cref="IInputBackend"/> 的 SDL2 實作：把 SDL_Event 轉成中性 <see cref="PlatformEvent"/>，
+/// 交由 Core 的 keyboard.c 處理。Core 不直接依賴 SDL。
 /// </summary>
-internal sealed class SdlInput : IInputBackend
+internal sealed unsafe class SdlInput : IInputBackend
 {
-    // 每個 GameKey 對應一組可能的實體 scancode。
-    private static readonly Dictionary<GameKey, SDL.SDL_Scancode[]> KeyMap = new()
+    public bool PollEvent(out PlatformEvent e)
     {
-        [GameKey.Up]      = [SDL.SDL_Scancode.SDL_SCANCODE_UP],
-        [GameKey.Down]    = [SDL.SDL_Scancode.SDL_SCANCODE_DOWN],
-        [GameKey.Left]    = [SDL.SDL_Scancode.SDL_SCANCODE_LEFT],
-        [GameKey.Right]   = [SDL.SDL_Scancode.SDL_SCANCODE_RIGHT],
-        [GameKey.Fire]    = [SDL.SDL_Scancode.SDL_SCANCODE_SPACE],
-        [GameKey.Change]  = [SDL.SDL_Scancode.SDL_SCANCODE_RETURN],
-        [GameKey.SideLeft]= [SDL.SDL_Scancode.SDL_SCANCODE_LCTRL, SDL.SDL_Scancode.SDL_SCANCODE_RCTRL],
-        [GameKey.SideRight]=[SDL.SDL_Scancode.SDL_SCANCODE_LALT, SDL.SDL_Scancode.SDL_SCANCODE_RALT],
-        [GameKey.Pause]   = [SDL.SDL_Scancode.SDL_SCANCODE_P],
-        [GameKey.Enter]   = [SDL.SDL_Scancode.SDL_SCANCODE_RETURN],
-        [GameKey.Escape]  = [SDL.SDL_Scancode.SDL_SCANCODE_ESCAPE],
-        [GameKey.Space]   = [SDL.SDL_Scancode.SDL_SCANCODE_SPACE],
-        [GameKey.FullscreenToggle] = [SDL.SDL_Scancode.SDL_SCANCODE_RETURN], // 搭配 alt 判定
-    };
+        e = default;
+        if (SDL.SDL_PollEvent(out SDL.SDL_Event se) == 0)
+            return false;
 
-    private readonly HashSet<SDL.SDL_Scancode> _down = new();
-    private readonly HashSet<SDL.SDL_Scancode> _pressedThisFrame = new();
-
-    public bool QuitRequested { get; private set; }
-
-    public void Poll()
-    {
-        _pressedThisFrame.Clear();
-
-        while (SDL.SDL_PollEvent(out SDL.SDL_Event e) != 0)
+        switch (se.type)
         {
-            switch (e.type)
-            {
-                case SDL.SDL_EventType.SDL_QUIT:
-                    QuitRequested = true;
-                    break;
+            case SDL.SDL_EventType.SDL_QUIT:
+                e.Type = PlatformEventType.Quit;
+                break;
 
-                case SDL.SDL_EventType.SDL_KEYDOWN:
-                    if (e.key.repeat == 0)
-                    {
-                        var sc = e.key.keysym.scancode;
-                        if (_down.Add(sc))
-                            _pressedThisFrame.Add(sc);
-                    }
-                    break;
+            case SDL.SDL_EventType.SDL_KEYDOWN:
+                e.Type = PlatformEventType.KeyDown;
+                e.Scancode = (int)se.key.keysym.scancode;
+                e.Sym = (int)se.key.keysym.sym;
+                e.Mod = (int)se.key.keysym.mod;
+                e.Repeat = se.key.repeat != 0;
+                break;
 
-                case SDL.SDL_EventType.SDL_KEYUP:
-                    _down.Remove(e.key.keysym.scancode);
-                    break;
-            }
+            case SDL.SDL_EventType.SDL_KEYUP:
+                e.Type = PlatformEventType.KeyUp;
+                e.Scancode = (int)se.key.keysym.scancode;
+                e.Sym = (int)se.key.keysym.sym;
+                e.Mod = (int)se.key.keysym.mod;
+                break;
+
+            case SDL.SDL_EventType.SDL_TEXTINPUT:
+                e.Type = PlatformEventType.TextInput;
+                e.Text = DecodeText(se.text.text);
+                break;
+
+            case SDL.SDL_EventType.SDL_MOUSEMOTION:
+                e.Type = PlatformEventType.MouseMotion;
+                e.X = se.motion.x; e.Y = se.motion.y;
+                e.Xrel = se.motion.xrel; e.Yrel = se.motion.yrel;
+                break;
+
+            case SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN:
+                e.Type = PlatformEventType.MouseButtonDown;
+                e.X = se.button.x; e.Y = se.button.y; e.Button = se.button.button;
+                break;
+
+            case SDL.SDL_EventType.SDL_MOUSEBUTTONUP:
+                e.Type = PlatformEventType.MouseButtonUp;
+                e.X = se.button.x; e.Y = se.button.y; e.Button = se.button.button;
+                break;
+
+            case SDL.SDL_EventType.SDL_WINDOWEVENT:
+                e.Type = se.window.windowEvent switch
+                {
+                    SDL.SDL_WindowEventID.SDL_WINDOWEVENT_FOCUS_GAINED => PlatformEventType.WindowFocusGained,
+                    SDL.SDL_WindowEventID.SDL_WINDOWEVENT_FOCUS_LOST => PlatformEventType.WindowFocusLost,
+                    SDL.SDL_WindowEventID.SDL_WINDOWEVENT_RESIZED => PlatformEventType.WindowResized,
+                    _ => PlatformEventType.Other,
+                };
+                break;
+
+            default:
+                e.Type = PlatformEventType.Other;
+                break;
         }
+        return true;
     }
 
-    public bool IsKeyDown(GameKey key)
+    private static string DecodeText(byte* text)
     {
-        foreach (var sc in KeyMap[key])
-            if (_down.Contains(sc)) return true;
-        return false;
+        int len = 0;
+        while (len < 32 && text[len] != 0) len++;
+        return Encoding.UTF8.GetString(text, len);
     }
 
-    public bool WasKeyPressed(GameKey key)
-    {
-        foreach (var sc in KeyMap[key])
-            if (_pressedThisFrame.Contains(sc)) return true;
-        return false;
-    }
+    public void SetRelativeMouseMode(bool enable) =>
+        SDL.SDL_SetRelativeMouseMode(enable ? SDL.SDL_bool.SDL_TRUE : SDL.SDL_bool.SDL_FALSE);
+
+    public void ShowCursor(bool show) =>
+        SDL.SDL_ShowCursor(show ? SDL.SDL_ENABLE : SDL.SDL_DISABLE);
 }

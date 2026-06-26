@@ -43,4 +43,9 @@ internal static unsafe class Video
         // 把 VGAScreen 的 indexed 影格送到平台呈現（放大/轉 RGB 由 adapter 處理）。
         Globals.Video.Present(new ReadOnlySpan<byte>(VGAScreen.pixels, vga_width * vga_height));
     }
+
+    // 視窗/座標相關（視窗由 adapter 擁有；這裡轉呼叫 IVideoBackend）
+    public static void toggle_fullscreen() => Globals.Video.ToggleFullscreen();
+    public static void video_on_win_resize() { /* adapter 自行處理視窗大小 */ }
+    public static void mapWindowPointToScreen(ref int x, ref int y) => Globals.Video.MapWindowToScreen(ref x, ref y);
 }

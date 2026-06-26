@@ -82,6 +82,21 @@ internal sealed class SdlVideo : IVideoBackend
         SDL.SDL_RenderPresent(_renderer);
     }
 
+    public void MapWindowToScreen(ref int x, ref int y)
+    {
+        SDL.SDL_RenderWindowToLogical(_renderer, x, y, out float lx, out float ly);
+        x = (int)lx;
+        y = (int)ly;
+    }
+
+    private bool _fullscreen;
+    public void ToggleFullscreen()
+    {
+        _fullscreen = !_fullscreen;
+        SDL.SDL_SetWindowFullscreen(_window,
+            _fullscreen ? (uint)SDL.SDL_WindowFlags.SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+    }
+
     public void Dispose()
     {
         if (_texture != IntPtr.Zero) SDL.SDL_DestroyTexture(_texture);

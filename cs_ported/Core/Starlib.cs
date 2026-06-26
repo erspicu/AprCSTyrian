@@ -125,9 +125,8 @@ internal static unsafe class Starlib
             }
         }
 
-        // 簡化輸入：泵入事件，ESC / 視窗關閉 => 離開
-        Globals.Input.Poll();
-        if (Globals.Input.QuitRequested || Globals.Input.IsKeyDown(GameKey.Escape))
+        // 簡化輸入：ESC => 離開（事件已由外層 Keyboard.handleSdlEvents 處理）
+        if (Keyboard.keysactive[SdlKeys.SDL_SCANCODE_ESCAPE])
             run = false;
 
         if (doChange)
