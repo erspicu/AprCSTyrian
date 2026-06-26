@@ -54,7 +54,10 @@ internal static unsafe partial class Tyrian2
             player[i].x_velocity = 0;
             player[i].y_velocity = 0;
             player[i].invulnerable_ticks = 100;
+            player[i].is_alive = true;
         }
+        player[0].x = 100; player[0].y = 180;
+        player[1].x = 200; player[1].y = 180;
 
         eventLoc = 1;
         curLoc = 0;
@@ -110,6 +113,20 @@ internal static unsafe partial class Tyrian2
             // --- BACKGROUND 2 & 3 ---
             Backgrnd.draw_background_2(Video.VGAScreen);
             Backgrnd.draw_background_3(Video.VGAScreen);
+
+            // === 簡化玩家控制（完整 JE_playerMovement 待移植：射擊/僚機/選項/爆炸/復活）===
+            const int spd = 2; // CURRENT_KEY_SPEED=1，骨架略加快以利操作
+            if (Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_UP]]) player[0].y -= spd;
+            if (Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_DOWN]]) player[0].y += spd;
+            if (Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_LEFT]]) player[0].x -= spd;
+            if (Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_RIGHT]]) player[0].x += spd;
+            if (player[0].x < 5) player[0].x = 5;
+            if (player[0].x > 295) player[0].x = 295;
+            if (player[0].y < 10) player[0].y = 10;
+            if (player[0].y > 185) player[0].y = 185;
+
+            // 繪製玩家船艦（對應 JE_playerMovement 的 shipGr blit）
+            Sprites.blit_sprite2x2(Video.VGAScreen, player[0].x - 5, player[0].y - 7, Varz.shipGrPtr, Varz.shipGr);
 
             Video.JE_showVGA();
             Nortsong.delayUntilElapsed();
