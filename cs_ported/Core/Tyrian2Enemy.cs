@@ -477,310 +477,460 @@ internal static unsafe partial class Tyrian2
     }
 
     /// <summary>
-    /// 敵人更新/繪製（對應 JE_drawEnemy 的核心：homing + 動畫 + size 多格繪製 + 立方加速 + 移動 + 彈跳 + 砲塔發射）。
-    /// 簡化省略：傷害閃白 filter 動畫、特殊砲塔型、boss、enemyOnScreen 計數。
+    /// 忠實移植 tyrian2.c:JE_drawEnemy(int enemyOffset)（行 178-622）。
+    /// 處理 band [enemyOffset-25, enemyOffset) 的 25 個敵人：homing AI、動畫、size 多格繪製、
+    /// 立方加速(curved)、移動/彈跳、score item 邊界、iced 凍結、enemyOnScreen 計數、
+    /// 砲塔發射(含 galaga 射速/雙人選活玩家瞄準/特殊磁鐵飛彈 251-255)、Enemy Launch Routine。
     /// </summary>
-    public static void JE_updateEnemies()
+    public static void JE_drawEnemy(int enemyOffset)
     {
         var player = Players.player;
-        Backgrnd.tempBackMove = Backgrnd.backMove;
-        enemyOnScreen = 0;
 
-        for (int z = 0; z < 100; z++)
+        player[0].x -= 25;
+
+        for (int i = enemyOffset - 25; i < enemyOffset; i++)
         {
-            if (Varz.enemyAvail[z] == 1)
-                continue;
-
-            Varz.enemy[z].mapoffset = Backgrnd.tempMapXOfs;
-
-            // homing 加速
-            if (Varz.enemy[z].xaccel != 0 && (uint)Varz.enemy[z].xaccel - 89u > MtRand.mt_rand() % 11)
+            if (Varz.enemyAvail[i] != 1)
             {
-                if (player[0].x > Varz.enemy[z].ex)
-                {
-                    if (Varz.enemy[z].exc < Varz.enemy[z].xaccel - 89) Varz.enemy[z].exc++;
-                }
-                else if (Varz.enemy[z].exc >= 0 || -Varz.enemy[z].exc < Varz.enemy[z].xaccel - 89)
-                    Varz.enemy[z].exc--;
-            }
-            if (Varz.enemy[z].yaccel != 0 && (uint)Varz.enemy[z].yaccel - 89u > MtRand.mt_rand() % 11)
-            {
-                if (player[0].y > Varz.enemy[z].ey)
-                {
-                    if (Varz.enemy[z].eyc < Varz.enemy[z].yaccel - 89) Varz.enemy[z].eyc++;
-                }
-                else if (Varz.enemy[z].eyc >= 0 || -Varz.enemy[z].eyc < Varz.enemy[z].yaccel - 89)
-                    Varz.enemy[z].eyc--;
-            }
+                Varz.enemy[i].mapoffset = Backgrnd.tempMapXOfs;
 
-            bool gone = false;
-
-            int exAbs = Varz.enemy[z].ex + Backgrnd.tempMapXOfs;
-            if (exAbs > -29 && exAbs < 300)
-            {
-                if (Varz.enemy[z].aniactive == 1)
+                if (Varz.enemy[i].xaccel != 0 && (uint)Varz.enemy[i].xaccel - 89u > MtRand.mt_rand() % 11)
                 {
-                    Varz.enemy[z].enemycycle++;
-                    if (Varz.enemy[z].enemycycle == Varz.enemy[z].animax)
-                        Varz.enemy[z].aniactive = Varz.enemy[z].aniwhenfire;
-                    else if (Varz.enemy[z].enemycycle > Varz.enemy[z].ani)
-                        Varz.enemy[z].enemycycle = Varz.enemy[z].animin;
-                }
-                if (Varz.enemy[z].enemycycle < 1)
-                    Varz.enemy[z].enemycycle = 1;
-
-                if (Varz.enemy[z].egr[Varz.enemy[z].enemycycle - 1] == 999)
-                {
-                    gone = true;
-                }
-                else
-                {
-                    if (Varz.enemy[z].size == 1) // 2x2 敵人
+                    if (player[0].x > Varz.enemy[i].ex)
                     {
-                        if (Varz.enemy[z].ey > -13)
+                        if (Varz.enemy[i].exc < Varz.enemy[i].xaccel - 89)
+                            Varz.enemy[i].exc++;
+                    }
+                    else
+                    {
+                        if (Varz.enemy[i].exc >= 0 || -Varz.enemy[i].exc < Varz.enemy[i].xaccel - 89)
+                            Varz.enemy[i].exc--;
+                    }
+                }
+
+                if (Varz.enemy[i].yaccel != 0 && (uint)Varz.enemy[i].yaccel - 89u > MtRand.mt_rand() % 11)
+                {
+                    if (player[0].y > Varz.enemy[i].ey)
+                    {
+                        if (Varz.enemy[i].eyc < Varz.enemy[i].yaccel - 89)
+                            Varz.enemy[i].eyc++;
+                    }
+                    else
+                    {
+                        if (Varz.enemy[i].eyc >= 0 || -Varz.enemy[i].eyc < Varz.enemy[i].yaccel - 89)
+                            Varz.enemy[i].eyc--;
+                    }
+                }
+
+                if (Varz.enemy[i].ex + Backgrnd.tempMapXOfs > -29 && Varz.enemy[i].ex + Backgrnd.tempMapXOfs < 300)
+                {
+                    if (Varz.enemy[i].aniactive == 1)
+                    {
+                        Varz.enemy[i].enemycycle++;
+
+                        if (Varz.enemy[i].enemycycle == Varz.enemy[i].animax)
+                            Varz.enemy[i].aniactive = Varz.enemy[i].aniwhenfire;
+                        else if (Varz.enemy[i].enemycycle > Varz.enemy[i].ani)
+                            Varz.enemy[i].enemycycle = Varz.enemy[i].animin;
+                    }
+
+                    if (Varz.enemy[i].egr[Varz.enemy[i].enemycycle - 1] == 999)
+                        goto enemy_gone;
+
+                    if (Varz.enemy[i].size == 1) // 2x2 enemy
+                    {
+                        if (Varz.enemy[i].ey > -13)
                         {
-                            blit_enemy(z, -6, -7, 0);
-                            blit_enemy(z, 6, -7, 1);
+                            blit_enemy(i, -6, -7, 0);
+                            blit_enemy(i,  6, -7, 1);
                         }
-                        if (Varz.enemy[z].ey > -26 && Varz.enemy[z].ey < 182)
+                        if (Varz.enemy[i].ey > -26 && Varz.enemy[i].ey < 182)
                         {
-                            blit_enemy(z, -6, 7, 19);
-                            blit_enemy(z, 6, 7, 20);
+                            blit_enemy(i, -6,  7, 19);
+                            blit_enemy(i,  6,  7, 20);
                         }
                     }
                     else
                     {
-                        if (Varz.enemy[z].ey > -13)
-                            blit_enemy(z, 0, 0, 0);
+                        if (Varz.enemy[i].ey > -13)
+                            blit_enemy(i, 0, 0, 0);
                     }
-                    Varz.enemy[z].filter = 0;
-                }
-            }
 
-            if (!gone)
-            {
-                // 立方加速（curved movement）
-                if (Varz.enemy[z].excc != 0 && --Varz.enemy[z].exccw <= 0)
-                {
-                    if (Varz.enemy[z].exc == Varz.enemy[z].exrev)
-                    {
-                        Varz.enemy[z].excc = (sbyte)-Varz.enemy[z].excc;
-                        Varz.enemy[z].exrev = (sbyte)-Varz.enemy[z].exrev;
-                        Varz.enemy[z].exccadd = (short)-Varz.enemy[z].exccadd;
-                    }
-                    else
-                    {
-                        Varz.enemy[z].exc += (sbyte)Varz.enemy[z].exccadd;
-                        Varz.enemy[z].exccw = (sbyte)Varz.enemy[z].exccwmax;
-                        if (Varz.enemy[z].exc == Varz.enemy[z].exrev)
-                        {
-                            Varz.enemy[z].excc = (sbyte)-Varz.enemy[z].excc;
-                            Varz.enemy[z].exrev = (sbyte)-Varz.enemy[z].exrev;
-                            Varz.enemy[z].exccadd = (short)-Varz.enemy[z].exccadd;
-                        }
-                    }
-                }
-                if (Varz.enemy[z].eycc != 0 && --Varz.enemy[z].eyccw <= 0)
-                {
-                    if (Varz.enemy[z].eyc == Varz.enemy[z].eyrev)
-                    {
-                        Varz.enemy[z].eycc = (sbyte)-Varz.enemy[z].eycc;
-                        Varz.enemy[z].eyrev = (sbyte)-Varz.enemy[z].eyrev;
-                        Varz.enemy[z].eyccadd = (short)-Varz.enemy[z].eyccadd;
-                    }
-                    else
-                    {
-                        Varz.enemy[z].eyc += (sbyte)Varz.enemy[z].eyccadd;
-                        Varz.enemy[z].eyccw = (sbyte)Varz.enemy[z].eyccwmax;
-                        if (Varz.enemy[z].eyc == Varz.enemy[z].eyrev)
-                        {
-                            Varz.enemy[z].eycc = (sbyte)-Varz.enemy[z].eycc;
-                            Varz.enemy[z].eyrev = (sbyte)-Varz.enemy[z].eyrev;
-                            Varz.enemy[z].eyccadd = (short)-Varz.enemy[z].eyccadd;
-                        }
-                    }
+                    Varz.enemy[i].filter = 0;
                 }
 
-                Varz.enemy[z].ey += Varz.enemy[z].fixedmovey;
-                Varz.enemy[z].ex += Varz.enemy[z].exc;
-                if (Varz.enemy[z].ex < -80 || Varz.enemy[z].ex > 340)
-                    gone = true;
-                else
+                if (Varz.enemy[i].excc != 0)
                 {
-                    Varz.enemy[z].ey += Varz.enemy[z].eyc;
-                    if (Varz.enemy[z].ey < -112 || Varz.enemy[z].ey > 190)
-                        gone = true;
-                    else
+                    if (--Varz.enemy[i].exccw <= 0)
                     {
-                        if (Varz.enemy[z].ex <= Varz.enemy[z].xminbounce || Varz.enemy[z].ex >= Varz.enemy[z].xmaxbounce)
-                            Varz.enemy[z].exc = (sbyte)-Varz.enemy[z].exc;
-                        if (Varz.enemy[z].ey <= Varz.enemy[z].yminbounce || Varz.enemy[z].ey >= Varz.enemy[z].ymaxbounce)
-                            Varz.enemy[z].eyc = (sbyte)-Varz.enemy[z].eyc;
-
-                        if (Varz.enemy[z].scoreitem)
+                        if (Varz.enemy[i].exc == Varz.enemy[i].exrev)
                         {
-                            if (Varz.enemy[z].ex < -5) Varz.enemy[z].ex++;
-                            if (Varz.enemy[z].ex > 245) Varz.enemy[z].ex--;
+                            Varz.enemy[i].excc = (sbyte)-Varz.enemy[i].excc;
+                            Varz.enemy[i].exrev = (sbyte)-Varz.enemy[i].exrev;
+                            Varz.enemy[i].exccadd = (short)-Varz.enemy[i].exccadd;
                         }
-                        Varz.enemy[z].ey += (short)Backgrnd.tempBackMove;
-                    }
-                }
-            }
-
-            if (gone)
-            {
-                Varz.enemyAvail[z] = 1;
-                continue;
-            }
-
-            // 僅在畫面內且非受損態才計數並發射（對應 JE_drawEnemy 339-351）
-            if (Varz.enemy[z].ex > -24 && Varz.enemy[z].ex < 296 && !Varz.enemy[z].edamaged)
-            {
-                enemyOnScreen++;
-                enemyTurretFire(z);
-            }
-        }
-    }
-
-    /// <summary>敵人砲塔發射敵彈（簡化：default 類型，跳過特殊磁鐵/飛彈 251-255）。對應 JE_drawEnemy 363-545。</summary>
-    public static void enemyTurretFire(int z)
-    {
-        int tempX = Varz.enemy[z].ex, tempY = Varz.enemy[z].ey, ofs = Backgrnd.tempMapXOfs;
-
-        for (int j = 3; j > 0; j--)
-        {
-            if (Varz.enemy[z].freq[j - 1] == 0)
-                continue;
-            int tur = Varz.enemy[z].tur[j - 1];
-            if (--Varz.enemy[z].eshotwait[j - 1] != 0 || tur == 0)
-                continue;
-
-            Varz.enemy[z].eshotwait[j - 1] = Varz.enemy[z].freq[j - 1];
-            if (Config.difficultyLevel > Config.DIFFICULTY_NORMAL)
-            {
-                Varz.enemy[z].eshotwait[j - 1] = (byte)(Varz.enemy[z].eshotwait[j - 1] / 2 + 1);
-                if (Config.difficultyLevel > Config.DIFFICULTY_MANIACAL)
-                    Varz.enemy[z].eshotwait[j - 1] = (byte)(Varz.enemy[z].eshotwait[j - 1] / 2 + 1);
-            }
-
-            // 特殊砲塔型（磁鐵/飛彈/排斥），處理後跳過一般子彈建立
-            if (tur >= 251)
-            {
-                var pl = Players.player;
-                switch (tur)
-                {
-                    case 252: // Savara Boss DualMissile
-                        if (Varz.enemy[z].ey > 20)
+                        else
                         {
-                            Varz.JE_setupExplosion(tempX - 8 + ofs, tempY - 20 - Backgrnd.backMove * 8, -2, 6, false, false);
-                            Varz.JE_setupExplosion(tempX + 4 + ofs, tempY - 20 - Backgrnd.backMove * 8, -2, 6, false, false);
-                        }
-                        break;
-                    case 251: // Suck-O-Magnet（吸引玩家）
-                        {
-                            int attraction = 4 - (Math.Abs(pl[0].x - tempX) + Math.Abs(pl[0].y - tempY)) / 100;
-                            if (attraction > 0)
-                                pl[0].x_velocity += (pl[0].x > tempX) ? -attraction : attraction;
-                        }
-                        break;
-                    case 253: // ShortRange Magnet（推 +2）
-                        if (Math.Abs(pl[0].x + 25 - 14 - tempX) < 24 && Math.Abs(pl[0].y - tempY) < 28)
-                            pl[0].x_velocity += 2;
-                        if (Config.twoPlayerMode && Math.Abs(pl[1].x - 14 - tempX) < 24 && Math.Abs(pl[1].y - tempY) < 28)
-                            pl[1].x_velocity += 2;
-                        break;
-                    case 254: // ShortRange Magnet（推 -2）
-                        if (Math.Abs(pl[0].x + 25 - 14 - tempX) < 24 && Math.Abs(pl[0].y - tempY) < 28)
-                            pl[0].x_velocity -= 2;
-                        if (Config.twoPlayerMode && Math.Abs(pl[1].x - 14 - tempX) < 24 && Math.Abs(pl[1].y - tempY) < 28)
-                            pl[1].x_velocity -= 2;
-                        break;
-                    case 255: // Magneto RePulse（排斥玩家）
-                        if (Config.difficultyLevel != Config.DIFFICULTY_EASY)
-                        {
-                            if (j == 3)
-                                Varz.enemy[z].filter = 0x70;
-                            else
+                            Varz.enemy[i].exc += (sbyte)Varz.enemy[i].exccadd;
+                            Varz.enemy[i].exccw = (sbyte)Varz.enemy[i].exccwmax;
+                            if (Varz.enemy[i].exc == Varz.enemy[i].exrev)
                             {
-                                int repulsion = 4 - (Math.Abs(pl[0].x - tempX) + Math.Abs(pl[0].y - tempY)) / 20;
-                                if (repulsion > 0)
-                                    pl[0].x_velocity += (pl[0].x > tempX) ? repulsion : -repulsion;
+                                Varz.enemy[i].excc = (sbyte)-Varz.enemy[i].excc;
+                                Varz.enemy[i].exrev = (sbyte)-Varz.enemy[i].exrev;
+                                Varz.enemy[i].exccadd = (short)-Varz.enemy[i].exccadd;
                             }
                         }
-                        break;
+                    }
                 }
-                continue; // 特殊型不建立一般子彈
+
+                if (Varz.enemy[i].eycc != 0)
+                {
+                    if (--Varz.enemy[i].eyccw <= 0)
+                    {
+                        if (Varz.enemy[i].eyc == Varz.enemy[i].eyrev)
+                        {
+                            Varz.enemy[i].eycc = (sbyte)-Varz.enemy[i].eycc;
+                            Varz.enemy[i].eyrev = (sbyte)-Varz.enemy[i].eyrev;
+                            Varz.enemy[i].eyccadd = (short)-Varz.enemy[i].eyccadd;
+                        }
+                        else
+                        {
+                            Varz.enemy[i].eyc += (sbyte)Varz.enemy[i].eyccadd;
+                            Varz.enemy[i].eyccw = (sbyte)Varz.enemy[i].eyccwmax;
+                            if (Varz.enemy[i].eyc == Varz.enemy[i].eyrev)
+                            {
+                                Varz.enemy[i].eycc = (sbyte)-Varz.enemy[i].eycc;
+                                Varz.enemy[i].eyrev = (sbyte)-Varz.enemy[i].eyrev;
+                                Varz.enemy[i].eyccadd = (short)-Varz.enemy[i].eyccadd;
+                            }
+                        }
+                    }
+                }
+
+                Varz.enemy[i].ey += Varz.enemy[i].fixedmovey;
+
+                Varz.enemy[i].ex += Varz.enemy[i].exc;
+                if (Varz.enemy[i].ex < -80 || Varz.enemy[i].ex > 340)
+                    goto enemy_gone;
+
+                Varz.enemy[i].ey += Varz.enemy[i].eyc;
+                if (Varz.enemy[i].ey < -112 || Varz.enemy[i].ey > 190)
+                    goto enemy_gone;
+
+                goto enemy_still_exists;
+
+enemy_gone:
+                /* enemy[i].egr[10] &= 0x00ff; <MXD> madness? */
+                Varz.enemyAvail[i] = 1;
+                goto draw_enemy_end;
+
+enemy_still_exists:
+
+                /*X bounce*/
+                if (Varz.enemy[i].ex <= Varz.enemy[i].xminbounce || Varz.enemy[i].ex >= Varz.enemy[i].xmaxbounce)
+                    Varz.enemy[i].exc = (sbyte)-Varz.enemy[i].exc;
+
+                /*Y bounce*/
+                if (Varz.enemy[i].ey <= Varz.enemy[i].yminbounce || Varz.enemy[i].ey >= Varz.enemy[i].ymaxbounce)
+                    Varz.enemy[i].eyc = (sbyte)-Varz.enemy[i].eyc;
+
+                /* Evalue != 0 - score item at boundary */
+                if (Varz.enemy[i].scoreitem)
+                {
+                    if (Varz.enemy[i].ex < -5)
+                        Varz.enemy[i].ex++;
+                    if (Varz.enemy[i].ex > 245)
+                        Varz.enemy[i].ex--;
+                }
+
+                Varz.enemy[i].ey += (short)Backgrnd.tempBackMove;
+
+                if (Varz.enemy[i].ex <= -24 || Varz.enemy[i].ex >= 296)
+                    goto draw_enemy_end;
+
+                int tempX = Varz.enemy[i].ex;
+                int tempY = Varz.enemy[i].ey;
+
+                Varz.temp = (byte)Varz.enemy[i].enemytype;
+
+                /* Enemy Shots */
+                if (Varz.enemy[i].edamaged)
+                    goto draw_enemy_end;
+
+                enemyOnScreen++;
+
+                if (Varz.enemy[i].iced != 0)
+                {
+                    Varz.enemy[i].iced--;
+                    if (Varz.enemy[i].enemyground)
+                    {
+                        Varz.enemy[i].filter = 0x09;
+                    }
+                    goto draw_enemy_end;
+                }
+
+                for (int j = 3; j > 0; j--)
+                {
+                    if (Varz.enemy[i].freq[j-1] != 0)
+                    {
+                        Varz.temp3 = Varz.enemy[i].tur[j-1];
+
+                        if (--Varz.enemy[i].eshotwait[j-1] == 0 && Varz.temp3 != 0)
+                        {
+                            Varz.enemy[i].eshotwait[j-1] = Varz.enemy[i].freq[j-1];
+                            if (Config.difficultyLevel > Config.DIFFICULTY_NORMAL)
+                            {
+                                Varz.enemy[i].eshotwait[j-1] = (byte)((Varz.enemy[i].eshotwait[j-1] / 2) + 1);
+                                if (Config.difficultyLevel > Config.DIFFICULTY_MANIACAL)
+                                    Varz.enemy[i].eshotwait[j-1] = (byte)((Varz.enemy[i].eshotwait[j-1] / 2) + 1);
+                            }
+
+                            if (Config.galagaMode && (Varz.enemy[i].eyc == 0 || (MtRand.mt_rand() % 400) >= galagaShotFreq))
+                                goto draw_enemy_end;
+
+                            switch (Varz.temp3)
+                            {
+                            case 252: /* Savara Boss DualMissile */
+                                if (Varz.enemy[i].ey > 20)
+                                {
+                                    Varz.JE_setupExplosion(tempX - 8 + Backgrnd.tempMapXOfs, tempY - 20 - Backgrnd.backMove * 8, -2, 6, false, false);
+                                    Varz.JE_setupExplosion(tempX + 4 + Backgrnd.tempMapXOfs, tempY - 20 - Backgrnd.backMove * 8, -2, 6, false, false);
+                                }
+                                break;
+                            case 251: /* Suck-O-Magnet */
+                                {
+                                    int attraction = 4 - (Math.Abs(player[0].x - tempX) + Math.Abs(player[0].y - tempY)) / 100;
+                                    if (attraction > 0)
+                                        player[0].x_velocity += (player[0].x > tempX) ? -attraction : attraction;
+                                }
+                                break;
+                            case 253: /* Left ShortRange Magnet */
+                                if (Math.Abs(player[0].x + 25 - 14 - tempX) < 24 && Math.Abs(player[0].y - tempY) < 28)
+                                {
+                                    player[0].x_velocity += 2;
+                                }
+                                if (Config.twoPlayerMode &&
+                                   (Math.Abs(player[1].x - 14 - tempX) < 24 && Math.Abs(player[1].y - tempY) < 28))
+                                {
+                                    player[1].x_velocity += 2;
+                                }
+                                break;
+                            case 254: /* Left ShortRange Magnet */
+                                if (Math.Abs(player[0].x + 25 - 14 - tempX) < 24 && Math.Abs(player[0].y - tempY) < 28)
+                                {
+                                    player[0].x_velocity -= 2;
+                                }
+                                if (Config.twoPlayerMode &&
+                                   (Math.Abs(player[1].x - 14 - tempX) < 24 && Math.Abs(player[1].y - tempY) < 28))
+                                {
+                                    player[1].x_velocity -= 2;
+                                }
+                                break;
+                            case 255: /* Magneto RePulse!! */
+                                if (Config.difficultyLevel != Config.DIFFICULTY_EASY) /*DIF*/
+                                {
+                                    if (j == 3)
+                                    {
+                                        Varz.enemy[i].filter = 0x70;
+                                    }
+                                    else
+                                    {
+                                        int repulsion = 4 - (Math.Abs(player[0].x - tempX) + Math.Abs(player[0].y - tempY)) / 20;
+                                        if (repulsion > 0)
+                                            player[0].x_velocity += (player[0].x > tempX) ? repulsion : -repulsion;
+                                    }
+                                }
+                                break;
+                            default:
+                            /*Rot*/
+                                for (int tempCount = Episodes.weapons[Varz.temp3].multi; tempCount > 0; tempCount--)
+                                {
+                                    for (Varz.b = 0; Varz.b < VarzConst.ENEMY_SHOT_MAX; Varz.b++)
+                                    {
+                                        if (Varz.enemyShotAvail[Varz.b])
+                                            break;
+                                    }
+                                    if (Varz.b == VarzConst.ENEMY_SHOT_MAX)
+                                        goto draw_enemy_end;
+
+                                    Varz.enemyShotAvail[Varz.b] = !Varz.enemyShotAvail[Varz.b];
+
+                                    if (Episodes.weapons[Varz.temp3].sound > 0)
+                                    {
+                                        do
+                                        {
+                                            Varz.temp = (byte)(MtRand.mt_rand() % 8);
+                                        } while (Varz.temp == 3);
+                                        Varz.soundQueue[Varz.temp] = Episodes.weapons[Varz.temp3].sound;
+                                    }
+
+                                    if (Varz.enemy[i].aniactive == 2)
+                                        Varz.enemy[i].aniactive = 1;
+
+                                    if (++Varz.enemy[i].eshotmultipos[j-1] > Episodes.weapons[Varz.temp3].max)
+                                        Varz.enemy[i].eshotmultipos[j-1] = 1;
+
+                                    int tempPos = Varz.enemy[i].eshotmultipos[j-1] - 1;
+
+                                    if (j == 1)
+                                        Varz.temp2 = 4;
+
+                                    Varz.enemyShot[Varz.b].sx = (short)(tempX + Episodes.weapons[Varz.temp3].bx[tempPos] + Backgrnd.tempMapXOfs);
+                                    Varz.enemyShot[Varz.b].sy = (short)(tempY + Episodes.weapons[Varz.temp3].by[tempPos]);
+                                    Varz.enemyShot[Varz.b].sdmg = Episodes.weapons[Varz.temp3].attack[tempPos];
+                                    Varz.enemyShot[Varz.b].tx = Episodes.weapons[Varz.temp3].tx;
+                                    Varz.enemyShot[Varz.b].ty = Episodes.weapons[Varz.temp3].ty;
+                                    Varz.enemyShot[Varz.b].duration = Episodes.weapons[Varz.temp3].del[tempPos];
+                                    Varz.enemyShot[Varz.b].animate = 0;
+                                    Varz.enemyShot[Varz.b].animax = Episodes.weapons[Varz.temp3].weapani;
+
+                                    Varz.enemyShot[Varz.b].sgr = Episodes.weapons[Varz.temp3].sg[tempPos];
+                                    switch (j)
+                                    {
+                                    case 1:
+                                        Varz.enemyShot[Varz.b].syc = Episodes.weapons[Varz.temp3].acceleration;
+                                        Varz.enemyShot[Varz.b].sxc = Episodes.weapons[Varz.temp3].accelerationx;
+
+                                        Varz.enemyShot[Varz.b].sxm = Episodes.weapons[Varz.temp3].sx[tempPos];
+                                        Varz.enemyShot[Varz.b].sym = Episodes.weapons[Varz.temp3].sy[tempPos];
+                                        break;
+                                    case 3:
+                                        Varz.enemyShot[Varz.b].sxc = (sbyte)-Episodes.weapons[Varz.temp3].acceleration;
+                                        Varz.enemyShot[Varz.b].syc = Episodes.weapons[Varz.temp3].accelerationx;
+
+                                        Varz.enemyShot[Varz.b].sxm = (short)-Episodes.weapons[Varz.temp3].sy[tempPos];
+                                        Varz.enemyShot[Varz.b].sym = (short)-Episodes.weapons[Varz.temp3].sx[tempPos];
+                                        break;
+                                    case 2:
+                                        Varz.enemyShot[Varz.b].sxc = Episodes.weapons[Varz.temp3].acceleration;
+                                        Varz.enemyShot[Varz.b].syc = (sbyte)-Episodes.weapons[Varz.temp3].acceleration;
+
+                                        Varz.enemyShot[Varz.b].sxm = Episodes.weapons[Varz.temp3].sy[tempPos];
+                                        Varz.enemyShot[Varz.b].sym = (short)-Episodes.weapons[Varz.temp3].sx[tempPos];
+                                        break;
+                                    }
+
+                                    if (Episodes.weapons[Varz.temp3].aim > 0)
+                                    {
+                                        int aim = Episodes.weapons[Varz.temp3].aim;
+
+                                        /*DIF*/
+                                        if (Config.difficultyLevel > Config.DIFFICULTY_NORMAL)
+                                            aim += Config.difficultyLevel - 2;
+
+                                        int targetX = player[0].x;
+                                        int targetY = player[0].y;
+
+                                        if (Config.twoPlayerMode)
+                                        {
+                                            // fire at live player(s)
+                                            if (player[0].is_alive && !player[1].is_alive)
+                                                Varz.temp = 0;
+                                            else if (player[1].is_alive && !player[0].is_alive)
+                                                Varz.temp = 1;
+                                            else
+                                                Varz.temp = (byte)(MtRand.mt_rand() % 2);
+
+                                            if (Varz.temp == 1)
+                                            {
+                                                targetX = player[1].x - 25;
+                                                targetY = player[1].y;
+                                            }
+                                        }
+
+                                        int aimX = (targetX + 25) - tempX - Backgrnd.tempMapXOfs - 4;
+                                        if (aimX == 0)
+                                            aimX = 1;
+                                        int aimY = targetY - tempY;
+                                        if (aimY == 0)
+                                            aimY = 1;
+                                        int maxMagAim = Math.Max(Math.Abs(aimX), Math.Abs(aimY));
+                                        Varz.enemyShot[Varz.b].sxm = (short)MathF.Round((float)aimX / maxMagAim * aim);
+                                        Varz.enemyShot[Varz.b].sym = (short)MathF.Round((float)aimY / maxMagAim * aim);
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                /* Enemy Launch Routine */
+                if (Varz.enemy[i].launchfreq != 0)
+                {
+                    if (--Varz.enemy[i].launchwait == 0)
+                    {
+                        Varz.enemy[i].launchwait = Varz.enemy[i].launchfreq;
+
+                        if (Varz.enemy[i].launchspecial != 0)
+                        {
+                            /*Type  1 : Must be inline with player*/
+                            if (Math.Abs(Varz.enemy[i].ey - player[0].y) > 5)
+                                goto draw_enemy_end;
+                        }
+
+                        if (Varz.enemy[i].aniactive == 2)
+                        {
+                            Varz.enemy[i].aniactive = 1;
+                        }
+
+                        if (Varz.enemy[i].launchtype == 0)
+                            goto draw_enemy_end;
+
+                        Varz.tempW = Varz.enemy[i].launchtype;
+                        Varz.b = JE_newEnemy(enemyOffset == 50 ? 75 : enemyOffset - 25, Varz.tempW, 0);
+
+                        /*Launch Enemy Placement*/
+                        if (Varz.b > 0)
+                        {
+                            int e = Varz.b - 1;
+
+                            Varz.enemy[e].ex = (short)tempX;
+                            Varz.enemy[e].ey = (short)(tempY + Episodes.enemyDat[Varz.enemy[e].enemytype].startyc);
+                            if (Varz.enemy[e].size == 0)
+                                Varz.enemy[e].ey -= 7;
+
+                            if (Varz.enemy[e].launchtype > 0 && Varz.enemy[e].launchfreq == 0)
+                            {
+                                if (Varz.enemy[e].launchtype > 90)
+                                {
+                                    int lt = Varz.enemy[e].launchtype;
+                                    Varz.enemy[e].ex = (short)(Varz.enemy[e].ex + ((int)(MtRand.mt_rand() % (uint)((lt - 90) * 4)) - (lt - 90) * 2));
+                                }
+                                else
+                                {
+                                    int aimX = (player[0].x + 25) - tempX - Backgrnd.tempMapXOfs - 4;
+                                    if (aimX == 0)
+                                        aimX = 1;
+                                    int aimY = player[0].y - tempY;
+                                    if (aimY == 0)
+                                        aimY = 1;
+                                    int maxMagAim = Math.Max(Math.Abs(aimX), Math.Abs(aimY));
+                                    Varz.enemy[e].exc = (sbyte)MathF.Round((float)aimX / maxMagAim * Varz.enemy[e].launchtype);
+                                    Varz.enemy[e].eyc = (sbyte)MathF.Round((float)aimY / maxMagAim * Varz.enemy[e].launchtype);
+                                }
+                            }
+
+                            do
+                            {
+                                Varz.temp = (byte)(MtRand.mt_rand() % 8);
+                            } while (Varz.temp == 3);
+                            Varz.soundQueue[Varz.temp] = Varz.randomEnemyLaunchSounds[(MtRand.mt_rand() % 3)];
+
+                            if (Varz.enemy[i].launchspecial == 1 &&
+                                Varz.enemy[i].linknum < 100)
+                            {
+                                Varz.enemy[e].linknum = Varz.enemy[i].linknum;
+                            }
+                        }
+                    }
+                }
             }
-
-            for (int tempCount = Episodes.weapons[tur].multi; tempCount > 0; tempCount--)
-            {
-                int b2 = -1;
-                for (int bb = 0; bb < VarzConst.ENEMY_SHOT_MAX; bb++)
-                    if (Varz.enemyShotAvail[bb]) { b2 = bb; break; }
-                if (b2 < 0)
-                    return;
-
-                Varz.enemyShotAvail[b2] = false;
-
-                if (Episodes.weapons[tur].sound > 0)
-                {
-                    int si;
-                    do { si = (int)(MtRand.mt_rand() % 8); } while (si == 3);
-                    Varz.soundQueue[si] = Episodes.weapons[tur].sound;
-                }
-
-                if (Varz.enemy[z].aniactive == 2)
-                    Varz.enemy[z].aniactive = 1;
-
-                Varz.enemy[z].eshotmultipos[j - 1]++;
-                if (Varz.enemy[z].eshotmultipos[j - 1] > Episodes.weapons[tur].max)
-                    Varz.enemy[z].eshotmultipos[j - 1] = 1;
-                int tp = Varz.enemy[z].eshotmultipos[j - 1] - 1;
-
-                Varz.enemyShot[b2].sx = (short)(tempX + Episodes.weapons[tur].bx[tp] + ofs);
-                Varz.enemyShot[b2].sy = (short)(tempY + Episodes.weapons[tur].by[tp]);
-                Varz.enemyShot[b2].sdmg = Episodes.weapons[tur].attack[tp];
-                Varz.enemyShot[b2].tx = Episodes.weapons[tur].tx;
-                Varz.enemyShot[b2].ty = Episodes.weapons[tur].ty;
-                Varz.enemyShot[b2].duration = Episodes.weapons[tur].del[tp];
-                Varz.enemyShot[b2].animate = 0;
-                Varz.enemyShot[b2].animax = Episodes.weapons[tur].weapani;
-                Varz.enemyShot[b2].sgr = Episodes.weapons[tur].sg[tp];
-
-                sbyte acc = Episodes.weapons[tur].acceleration, accx = Episodes.weapons[tur].accelerationx;
-                sbyte wsx = Episodes.weapons[tur].sx[tp], wsy = Episodes.weapons[tur].sy[tp];
-                switch (j)
-                {
-                    case 1:
-                        Varz.enemyShot[b2].syc = acc; Varz.enemyShot[b2].sxc = accx;
-                        Varz.enemyShot[b2].sxm = wsx; Varz.enemyShot[b2].sym = wsy;
-                        break;
-                    case 3:
-                        Varz.enemyShot[b2].sxc = (sbyte)-acc; Varz.enemyShot[b2].syc = accx;
-                        Varz.enemyShot[b2].sxm = (short)-wsy; Varz.enemyShot[b2].sym = (short)-wsx;
-                        break;
-                    case 2:
-                        Varz.enemyShot[b2].sxc = acc; Varz.enemyShot[b2].syc = (sbyte)-acc;
-                        Varz.enemyShot[b2].sxm = wsy; Varz.enemyShot[b2].sym = (short)-wsx;
-                        break;
-                }
-
-                if (Episodes.weapons[tur].aim > 0)
-                {
-                    int aim = Episodes.weapons[tur].aim;
-                    if (Config.difficultyLevel > Config.DIFFICULTY_NORMAL)
-                        aim += Config.difficultyLevel - 2;
-
-                    int aimX = (Players.player[0].x + 25) - tempX - ofs - 4;
-                    if (aimX == 0) aimX = 1;
-                    int aimY = Players.player[0].y - tempY;
-                    if (aimY == 0) aimY = 1;
-                    int maxMag = Math.Max(Math.Abs(aimX), Math.Abs(aimY));
-                    Varz.enemyShot[b2].sxm = (short)MathF.Round((float)aimX / maxMag * aim);
-                    Varz.enemyShot[b2].sym = (short)MathF.Round((float)aimY / maxMag * aim);
-                }
-            }
+draw_enemy_end:
+            ;
         }
+
+        player[0].x += 25;
     }
 
     /// <summary>敵彈移動/繪製 + 擊中玩家碰撞。對應 tyrian2.c 1769-1858。</summary>

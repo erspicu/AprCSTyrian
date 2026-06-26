@@ -92,8 +92,7 @@ internal static unsafe partial class Tyrian2
     /// <summary>
     /// 逐行移植 sources/src/tyrian2.c:JE_main（行 624-2389）—— 遊戲主迴圈。
     /// 結構/順序/變數忠實對照原版；尚未移植者以 TODO 空殼呼叫標示，不自創行為。
-    /// 注意：原版以分層 JE_drawEnemy(50/100/25/75) 繪敵；本移植在「第一次 ground 敵人繪製」
-    /// 位置呼叫一次 JE_updateEnemies()（跑 0-100），其餘分層繪製點以 TODO 註記略過。
+    /// 注意：敵人以分層 JE_drawEnemy(50/100/25/75) 繪製，依原版位置呼叫（ground/sky/top）。
     /// </summary>
     public static void JE_main()
     {
@@ -724,8 +723,8 @@ internal static unsafe partial class Tyrian2
 
         Backgrnd.tempMapXOfs = Backgrnd.mapXOfs;
         Backgrnd.tempBackMove = Backgrnd.backMove;
-        // 原版：JE_drawEnemy(50); JE_drawEnemy(100);  → 第一次 ground 敵人繪製
-        Tyrian2.JE_updateEnemies();
+        Tyrian2.JE_drawEnemy(50);
+        Tyrian2.JE_drawEnemy(100);
 
         if (enemyOnScreen == 0 || enemyOnScreen == lastEnemyOnScreen)
         {
@@ -795,7 +794,7 @@ internal static unsafe partial class Tyrian2
 
             Backgrnd.tempMapXOfs = Backgrnd.mapX2Ofs;
             Backgrnd.tempBackMove = 0;
-            // TODO: 分層敵人繪製(待 JE_drawEnemy 重構) JE_drawEnemy(25);
+            Tyrian2.JE_drawEnemy(25);
 
             if (enemyOnScreen == lastEnemyOnScreen)
             {
@@ -812,7 +811,7 @@ internal static unsafe partial class Tyrian2
         {
             Backgrnd.tempMapXOfs = (!background3x1) ? Backgrnd.oldMapX3Ofs : Backgrnd.mapXOfs;
             Backgrnd.tempBackMove = Backgrnd.backMove3;
-            // TODO: 分層敵人繪製(待 JE_drawEnemy 重構) JE_drawEnemy(75);
+            Tyrian2.JE_drawEnemy(75);
         }
 
         /* Player Shot Images */
@@ -1163,7 +1162,7 @@ internal static unsafe partial class Tyrian2
         {
             Backgrnd.tempMapXOfs = (!background3x1) ? Backgrnd.oldMapX3Ofs : Backgrnd.oldMapXOfs;
             Backgrnd.tempBackMove = Backgrnd.backMove3;
-            // TODO: 分層敵人繪製(待 JE_drawEnemy 重構) JE_drawEnemy(75);
+            Tyrian2.JE_drawEnemy(75);
         }
 
         /* Draw Sky Enemy */
@@ -1173,7 +1172,7 @@ internal static unsafe partial class Tyrian2
 
             Backgrnd.tempMapXOfs = Backgrnd.mapX2Ofs;
             Backgrnd.tempBackMove = 0;
-            // TODO: 分層敵人繪製(待 JE_drawEnemy 重構) JE_drawEnemy(25);
+            Tyrian2.JE_drawEnemy(25);
 
             if (enemyOnScreen == lastEnemyOnScreen)
             {
