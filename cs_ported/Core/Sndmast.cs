@@ -51,6 +51,49 @@ internal static class Sndmast
     public const int V_DATA_CUBE = 37;
     public const int V_ACCELERATE = 38;
 
+    /// <summary>對應 sndmast.c:soundTitle[SOUND_COUNT][9]（音效檔名，逐項照抄）。</summary>
+    public static readonly string[] soundTitle =
+    {
+        "SCALEDN2",
+        "F2",
+        "TEMP10",
+        "EXPLSM",
+        "PASS3",
+        "TEMP2",
+        "BYPASS1",
+        "EXP1RT",
+        "EXPLLOW",
+        "TEMP13",
+        "EXPRETAP",
+        "MT2BOOM",
+        "TEMP3",
+        "LAZB",
+        "LAZGUN2",
+        "SPRING",
+        "WARNING",
+        "ITEM",
+        "HIT2",
+        "MACHNGUN",
+        "HYPERD2",
+        "EXPLHUG",
+        "CLINK1",
+        "CLICK",
+        "SCALEDN1",
+        "TEMP11",
+        "TEMP16",
+        "SMALL1",
+        "POWERUP",
+        "VOICE1",
+        "VOICE2",
+        "VOICE3",
+        "VOICE4",
+        "VOICE5",
+        "VOICE6",
+        "VOICE7",
+        "VOICE8",
+        "VOICE9",
+    };
+
     /// <summary>對應 sndmast.c:windowTextSamples[9]（[1..9]，case 16 用）。</summary>
     public static readonly byte[] windowTextSamples =
     {
