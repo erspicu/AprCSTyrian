@@ -328,8 +328,172 @@ internal static unsafe partial class Mainint
         }
     }
 
-    /// <summary>對應 mainint.c:JE_playCredits —— 過關後跑製作名單。尚未移植，no-op 空殼。</summary>
-    public static void JE_playCredits() { /* TODO: 待移植 */ }
+    /// <summary>對應 mainint.c:JE_playCredits (2437-2601) —— 片尾製作群捲動畫面。逐行忠實移植。</summary>
+    public static void JE_playCredits()
+    {
+        const int lines_max = 131;
+        const int line_max_length = 65;
+
+        string[] credstr = new string[lines_max];
+
+        int lines = 0;
+
+        byte currentpic = 0, fade = 0;
+        sbyte fadechg = 1;
+        byte currentship = 0;
+        short shipx = 0, shipxwait = 0;
+        sbyte shipxc = 0, shipxca = 0;
+
+        Sprites.load_sprites_file((uint)Sprites.EXTRA_SHAPES, "estsc.shp");
+
+        Nortsong.setFrameCount2(1000);
+
+        Loudness.play_song(8);
+
+        // load credits text
+        var f = CFile.dir_fopen_die(CFile.data_dir(), "tyrian.cdt", "rb");
+        for (lines = 0; lines < lines_max; ++lines)
+        {
+            credstr[lines] = Helptext.ReadEncryptedPascalString(f, line_max_length + 1);
+        }
+        f.Dispose();
+
+        Array.Copy(Palette.palettes[6 - 1], Palette.colors, Palette.colors.Length);
+        Video.JE_clr256(Video.VGAScreen);
+        Video.JE_showVGA();
+        Palette.fade_palette(Palette.colors, 2, 0, 255);
+
+        //tempScreenSeg = VGAScreenSeg;
+
+        int ticks_max = lines * 20 * 3;
+        for (int ticks = 0; ticks < ticks_max; ++ticks)
+        {
+            Nortsong.setFrameCount(1);
+
+            Video.JE_clr256(Video.VGAScreen);
+
+            Sprites.blit_sprite_hv(Video.VGAScreenSeg, 319 - Sprites.sprite((uint)Sprites.EXTRA_SHAPES, currentpic).width, 100 - (Sprites.sprite((uint)Sprites.EXTRA_SHAPES, currentpic).height / 2), (uint)Sprites.EXTRA_SHAPES, currentpic, 0x0, (sbyte)(fade - 15));
+
+            fade = (byte)(fade + fadechg);
+            if (fade == 0 && fadechg == -1)
+            {
+                fadechg = 1;
+                ++currentpic;
+                if (currentpic >= Sprites.sprite_table[Sprites.EXTRA_SHAPES].count)
+                    currentpic = 0;
+            }
+            if (fade == 15)
+                fadechg = 0;
+
+            if (Nortsong.getFrameCount2Ticks() == 0)
+            {
+                Nortsong.setFrameCount2(900);
+
+                fadechg = -1;
+            }
+
+            if (ticks % 200 == 0)
+            {
+                currentship = (byte)((MtRand.mt_rand() % 11) + 1);
+                shipxwait = (short)((MtRand.mt_rand() % 80) + 10);
+                if ((MtRand.mt_rand() % 2) == 1)
+                {
+                    shipx = 1;
+                    shipxc = 0;
+                    shipxca = 1;
+                }
+                else
+                {
+                    shipx = 900;
+                    shipxc = 0;
+                    shipxca = -1;
+                }
+            }
+
+            shipxwait--;
+            if (shipxwait == 0)
+            {
+                if (shipx == 1 || shipx == 900)
+                    shipxc = 0;
+                shipxca = (sbyte)(-shipxca);
+                shipxwait = (short)((MtRand.mt_rand() % 40) + 15);
+            }
+            shipxc = (sbyte)(shipxc + shipxca);
+            shipx = (short)(shipx + shipxc);
+            if (shipx < 1)
+            {
+                shipx = 1;
+                shipxwait = 1;
+            }
+            if (shipx > 900)
+            {
+                shipx = 900;
+                shipxwait = 1;
+            }
+            int tmp_unknown = shipxc * shipxc;
+            if (450 + tmp_unknown < 0 || 450 + tmp_unknown > 900)
+            {
+                if (shipxca < 0 && shipxc < 0)
+                    shipxwait = 1;
+                if (shipxca > 0 && shipxc > 0)
+                    shipxwait = 1;
+            }
+
+            uint ship_sprite = Episodes.ships[currentship].shipgraphic;
+            if (shipxc < -10)
+                ship_sprite -= (uint)((shipxc < -20) ? 4 : 2);
+            else if (shipxc > 10)
+                ship_sprite += (uint)((shipxc > 20) ? 4 : 2);
+
+            Sprites.blit_sprite2x2(Video.VGAScreen, shipx / 40, 184 - (ticks % 200), Sprites.spriteSheet9, ship_sprite);
+
+            int bottom_line = (ticks / 3) / 20;
+            int y = 20 - ((ticks / 3) % 20);
+
+            for (int line = bottom_line - 10; line < bottom_line; ++line)
+            {
+                if (line >= 0 && line < lines_max)
+                {
+                    if (credstr[line] != "." && credstr[line].Length != 0)
+                    {
+                        byte color = (byte)(credstr[line][0] - 65);
+                        string text = credstr[line].Substring(1);
+
+                        int x = 110 - Fonthand.JE_textWidth(text, (uint)Sprites.SMALL_FONT_SHAPES) / 2;
+
+                        Fonthand.JE_outTextAdjust(Video.VGAScreen, x + Math.Abs((y / 18) % 4 - 2) - 1, y - 1, text, color, -8, (uint)Sprites.SMALL_FONT_SHAPES, false);
+                        Fonthand.JE_outTextAdjust(Video.VGAScreen, x,                                 y,     text, color, -2, (uint)Sprites.SMALL_FONT_SHAPES, false);
+                    }
+                }
+
+                y += 20;
+            }
+
+            Vga256d.fill_rectangle_xy(Video.VGAScreen, 0,  0, 319, 10, 0);
+            Vga256d.fill_rectangle_xy(Video.VGAScreen, 0, 190, 319, 199, 0);
+
+            if (currentpic == Sprites.sprite_table[Sprites.EXTRA_SHAPES].count - 1)
+                Fonthand.JE_outTextAdjust(Video.VGAScreen, 5, 180, Helptext.miscText[54], 2, -2, (uint)Sprites.SMALL_FONT_SHAPES, false);  // levels-in-episode
+
+            if (bottom_line == lines_max - 8)
+                Loudness.fade_song();
+
+            if (ticks == ticks_max - 1)
+            {
+                --ticks;
+                Loudness.play_song(9);
+            }
+
+            Video.JE_showVGA();
+
+            if (Keyboard.waitUntilGetInputOrElapsed())
+                break;
+        }
+
+        Palette.fade_black(10);
+
+        Sprites.free_sprites((uint)Sprites.EXTRA_SHAPES);
+    }
 
     /// <summary>
     /// 對應 mainint.c:JE_outCharGlow —— 逐字發光浮現動畫文字（過場警告用）。
