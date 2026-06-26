@@ -33,5 +33,10 @@ internal static unsafe partial class Tyrian2
     public static bool endLevel, reallyEndLevel, playerEndLevel, readyToEndLevel, quitRequested;
     public static ushort curLoc;
     public static byte astralDuration;
+
+    // 事件/背景狀態
+    public static ushort explodeMove, returnLoc;
+    public static bool stopBackgrounds, enemiesActive, forceEvents, background3x1, background3x1b;
+    public static byte stopBackgroundNum;
 #pragma warning restore CS0649
 }

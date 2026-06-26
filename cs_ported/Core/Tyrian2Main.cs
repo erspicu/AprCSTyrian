@@ -91,6 +91,10 @@ internal static unsafe partial class Tyrian2
 
             Nortsong.setFrameCount(2);
 
+            // --- 事件系統：觸發到期事件（對應 tyrian2.c 1252）---
+            while (eventRec[eventLoc - 1].eventtime <= curLoc && eventLoc <= maxEvent)
+                JE_eventSystem();
+
             // --- BACKGROUND 1 ---
             if (Backgrnd.map1YDelayMax > 1 && Backgrnd.backMove < 2)
                 Backgrnd.backMove = (ushort)((Backgrnd.map1YDelay == 1) ? 1 : 0);
