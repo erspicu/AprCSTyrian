@@ -42,9 +42,816 @@ internal static unsafe partial class Mainint
     {
         Backgrnd.anySmoothies = (Config.processorType > 2 && (Config.smoothies[1 - 1] || Config.smoothies[2 - 1])) || (Config.processorType > 1 && (Config.smoothies[3 - 1] || Config.smoothies[4 - 1] || Config.smoothies[5 - 1]));
     }
-    public static void JE_mainKeyboardInput() { /* TODO: 待移植 JE_mainKeyboardInput（遊戲中鍵盤：暫停/作弊鍵） */ }
-    public static void JE_pauseGame() { /* TODO: 待移植 JE_pauseGame（暫停畫面） */ }
-    public static void JE_doInGameSetup() { /* TODO: 待移植 JE_doInGameSetup（遊戲中設定選單） */ }
+    // network.h:JE_boolean pauseRequest, skipLevelRequest, helpRequest, nortShipRequest;
+    // 網路未移植（守則 8），這些請求旗標僅供 isNetworkGame（const false）分支引用。
+    public static bool pauseRequest, skipLevelRequest, helpRequest, nortShipRequest;
+
+    /// <summary>對應 newshape.c:JE_gammaCheck —— gamma 校正檢查（gamma 階段尚未移植，維持 no-op）。</summary>
+    public static void JE_gammaCheck() { /* TODO: 待移植 JE_gammaCheck（gamma 校正，另一階段） */ }
+
+    /// <summary>對應 mainint.c:JE_mainKeyboardInput —— 遊戲中按鍵分派（暫停/選單/說明/作弊碼）。</summary>
+    public static void JE_mainKeyboardInput()
+    {
+        var player = Players.player;
+        var keysactive = Keyboard.keysactive;
+
+        JE_gammaCheck();
+
+        /* { Network Request Commands } */
+
+        if (!Config.isNetworkGame)
+        {
+            /* { Edited Ships } for Player 1 */
+            if (Editship.extraAvail && keysactive[SdlKeys.SDL_SCANCODE_TAB] && !Config.isNetworkGame && !Config.superTyrian)
+            {
+                for (int x = SdlKeys.SDL_SCANCODE_1; x <= SdlKeys.SDL_SCANCODE_0; x++)
+                {
+                    if (keysactive[x])
+                    {
+                        int z = x - SdlKeys.SDL_SCANCODE_1 + 1;
+                        player[0].items.ship = (byte)(90 + z);             /*Ships*/
+                        z = (z - 1) * 15;
+                        player[0].items.weapon[Players.FRONT_WEAPON].id = Editship.extraShips[z + 1];
+                        player[0].items.weapon[Players.REAR_WEAPON].id = Editship.extraShips[z + 2];
+                        player[0].items.special = Editship.extraShips[z + 3];
+                        player[0].items.sidekick[Players.LEFT_SIDEKICK] = Editship.extraShips[z + 4];
+                        player[0].items.sidekick[Players.RIGHT_SIDEKICK] = Editship.extraShips[z + 5];
+                        player[0].items.generator = Editship.extraShips[z + 6];
+                        /*Armor*/
+                        player[0].items.shield = Editship.extraShips[z + 8];
+                        Array.Clear(Config.shotMultiPos, 0, Config.shotMultiPos.Length);
+
+                        if (player[0].weapon_mode > Varz.JE_portConfigs())
+                            player[0].weapon_mode = 1;
+
+                        Varz.tempW = (ushort)player[0].armor;
+                        Varz.JE_getShipInfo();
+                        if (player[0].armor > Varz.tempW && Tyrian2.editShip1)
+                            player[0].armor = Varz.tempW;
+                        else
+                            Tyrian2.editShip1 = true;
+
+                        SDL_Surface temp_surface = Video.VGAScreen;
+                        Video.VGAScreen = Video.VGAScreenSeg;
+                        Varz.JE_wipeShieldArmorBars();
+                        Varz.JE_drawArmor();
+                        Varz.JE_drawShield();
+                        Video.VGAScreen = temp_surface;
+                        Varz.JE_drawOptions();
+
+                        keysactive[x] = false;
+                    }
+                }
+            }
+
+            /* for Player 2 */
+            if (Editship.extraAvail && keysactive[SdlKeys.SDL_SCANCODE_CAPSLOCK] && !Config.isNetworkGame && !Config.superTyrian)
+            {
+                for (int x = SdlKeys.SDL_SCANCODE_1; x <= SdlKeys.SDL_SCANCODE_0; x++)
+                {
+                    if (keysactive[x])
+                    {
+                        int z = x - SdlKeys.SDL_SCANCODE_1 + 1;
+                        player[1].items.ship = (byte)(90 + z);
+                        z = (z - 1) * 15;
+                        player[1].items.weapon[Players.FRONT_WEAPON].id = Editship.extraShips[z + 1];
+                        player[1].items.weapon[Players.REAR_WEAPON].id = Editship.extraShips[z + 2];
+                        player[1].items.special = Editship.extraShips[z + 3];
+                        player[1].items.sidekick[Players.LEFT_SIDEKICK] = Editship.extraShips[z + 4];
+                        player[1].items.sidekick[Players.RIGHT_SIDEKICK] = Editship.extraShips[z + 5];
+                        player[1].items.generator = Editship.extraShips[z + 6];
+                        /*Armor*/
+                        player[1].items.shield = Editship.extraShips[z + 8];
+                        Array.Clear(Config.shotMultiPos, 0, Config.shotMultiPos.Length);
+
+                        if (player[1].weapon_mode > Varz.JE_portConfigs())
+                            player[1].weapon_mode = 1;
+
+                        Varz.tempW = (ushort)player[1].armor;
+                        Varz.JE_getShipInfo();
+                        if (player[1].armor > Varz.tempW && Tyrian2.editShip2)
+                            player[1].armor = Varz.tempW;
+                        else
+                            Tyrian2.editShip2 = true;
+
+                        SDL_Surface temp_surface = Video.VGAScreen;
+                        Video.VGAScreen = Video.VGAScreenSeg;
+                        Varz.JE_wipeShieldArmorBars();
+                        Varz.JE_drawArmor();
+                        Varz.JE_drawShield();
+                        Video.VGAScreen = temp_surface;
+                        Varz.JE_drawOptions();
+
+                        keysactive[x] = false;
+                    }
+                }
+            }
+        }
+
+        /* { In-Game Help } */
+        if (keysactive[SdlKeys.SDL_SCANCODE_F1])
+        {
+            if (Config.isNetworkGame)
+            {
+                helpRequest = true;
+            }
+            else
+            {
+                JE_inGameHelp();
+                Varz.skipStarShowVGA = true;
+            }
+        }
+
+        /* {!Activate Nort Ship!} */
+        if (keysactive[SdlKeys.SDL_SCANCODE_F2] && keysactive[SdlKeys.SDL_SCANCODE_F4] && keysactive[SdlKeys.SDL_SCANCODE_F6] && keysactive[SdlKeys.SDL_SCANCODE_F7] &&
+            keysactive[SdlKeys.SDL_SCANCODE_F9] && keysactive[SdlKeys.SDL_SCANCODE_BACKSLASH] && keysactive[SdlKeys.SDL_SCANCODE_SLASH])
+        {
+            if (Config.isNetworkGame)
+            {
+                nortShipRequest = true;
+            }
+            else
+            {
+                player[0].items.ship = 12;                            // Nort Ship
+                player[0].items.special = 13;                         // Astral Zone
+                player[0].items.weapon[Players.FRONT_WEAPON].id = 36; // NortShip Super Pulse
+                player[0].items.weapon[Players.REAR_WEAPON].id = 37;  // NortShip Spreader
+                Varz.shipGr = 1;
+            }
+        }
+
+        /* {Cheating} */
+        if (!Config.isNetworkGame && !Config.twoPlayerMode && !Config.superTyrian && Config.superArcadeMode == VarzConst.SA_NONE)
+        {
+            if (keysactive[SdlKeys.SDL_SCANCODE_F2] && keysactive[SdlKeys.SDL_SCANCODE_F3] && keysactive[SdlKeys.SDL_SCANCODE_F6])
+            {
+                Config.youAreCheating = !Config.youAreCheating;
+                keysactive[SdlKeys.SDL_SCANCODE_F2] = false;
+            }
+
+            if (keysactive[SdlKeys.SDL_SCANCODE_F2] && keysactive[SdlKeys.SDL_SCANCODE_F3] && (keysactive[SdlKeys.SDL_SCANCODE_F4] || keysactive[SdlKeys.SDL_SCANCODE_F5]))
+            {
+                for (uint i = 0; i < Players.player.Length; ++i)
+                    player[i].armor = 0;
+
+                Config.youAreCheating = !Config.youAreCheating;
+                JE_drawTextWindow(Helptext.miscText[63 - 1]);
+            }
+
+            if (Params.constantPlay && keysactive[SdlKeys.SDL_SCANCODE_C])
+            {
+                Config.youAreCheating = !Config.youAreCheating;
+                keysactive[SdlKeys.SDL_SCANCODE_C] = false;
+            }
+        }
+
+        if (Config.superTyrian)
+        {
+            Config.youAreCheating = false;
+        }
+
+        /* {Personal Commands} */
+
+        /* {DEBUG} */
+        if (keysactive[SdlKeys.SDL_SCANCODE_F10] && keysactive[SdlKeys.SDL_SCANCODE_BACKSPACE])
+        {
+            keysactive[SdlKeys.SDL_SCANCODE_F10] = false;
+            Tyrian2.debug = !Tyrian2.debug;
+
+            Tyrian2.debugHist = 0;
+            Tyrian2.debugHistCount = 0;
+
+            /* YKS: clock ticks since midnight replaced by SDL_GetTicks */
+            Tyrian2.lastDebugTime = Globals.Clock.Ticks;
+        }
+
+        /* {CHEAT-SKIP LEVEL} */
+        if (keysactive[SdlKeys.SDL_SCANCODE_F2] && keysactive[SdlKeys.SDL_SCANCODE_F6] && (keysactive[SdlKeys.SDL_SCANCODE_F7] || keysactive[SdlKeys.SDL_SCANCODE_F8]) && !keysactive[SdlKeys.SDL_SCANCODE_F9] &&
+            !Config.superTyrian && Config.superArcadeMode == VarzConst.SA_NONE)
+        {
+            if (Config.isNetworkGame)
+            {
+                skipLevelRequest = true;
+            }
+            else
+            {
+                Varz.levelTimer = true;
+                Tyrian2.levelTimerCountdown = 0;
+                Tyrian2.endLevel = true;
+                Varz.levelEnd = 40;
+            }
+        }
+
+        /* pause game */
+        pause_pressed |= keysactive[SdlKeys.SDL_SCANCODE_P];
+
+        /* in-game setup */
+        ingamemenu_pressed |= keysactive[SdlKeys.SDL_SCANCODE_ESCAPE];
+
+        if (keysactive[SdlKeys.SDL_SCANCODE_BACKSPACE])
+        {
+            /* toggle screenshot pause */
+            if (keysactive[SdlKeys.SDL_SCANCODE_NUMLOCKCLEAR])
+                Config.superPause = !Config.superPause;
+
+            /* {SMOOTHIES} */
+            if (keysactive[SdlKeys.SDL_SCANCODE_F12] && keysactive[SdlKeys.SDL_SCANCODE_SCROLLLOCK])
+            {
+                for (int temp = SdlKeys.SDL_SCANCODE_2; temp <= SdlKeys.SDL_SCANCODE_9; temp++)
+                    if (keysactive[temp])
+                        Config.smoothies[temp - SdlKeys.SDL_SCANCODE_2] = !Config.smoothies[temp - SdlKeys.SDL_SCANCODE_2];
+                if (keysactive[SdlKeys.SDL_SCANCODE_0])
+                    Config.smoothies[8] = !Config.smoothies[8];
+            }
+            else
+
+            /* {CYCLE THROUGH FILTER COLORS} */
+            if (keysactive[SdlKeys.SDL_SCANCODE_MINUS])
+            {
+                if (Config.levelFilter == -99)
+                {
+                    Config.levelFilter = 0;
+                }
+                else
+                {
+                    Config.levelFilter++;
+                    if (Config.levelFilter == 16)
+                        Config.levelFilter = -99;
+                }
+            }
+            else
+
+            /* {HYPER-SPEED} */
+            if (keysactive[SdlKeys.SDL_SCANCODE_1])
+            {
+                Config.fastPlay++;
+                if (Config.fastPlay > 2)
+                    Config.fastPlay = 0;
+                keysactive[SdlKeys.SDL_SCANCODE_1] = false;
+                Config.JE_setNewGameSpeed();
+            }
+
+            /* {IN-GAME RANDOM MUSIC SELECTION} */
+            if (keysactive[SdlKeys.SDL_SCANCODE_SCROLLLOCK])
+                Loudness.play_song((byte)(MtRand.mt_rand() % Musmast.MUSIC_NUM));
+        }
+    }
+
+    /// <summary>對應 mainint.c:JE_pauseGame —— 暫停畫面（顯示 PAUSE，等待按鍵，靜音音樂）。</summary>
+    public static void JE_pauseGame()
+    {
+        Keyboard.mouseSetRelative(false);
+
+        bool done = false;
+
+        SDL_Surface temp_surface = Video.VGAScreen;
+        Video.VGAScreen = Video.VGAScreenSeg; /* side-effect of game_screen */
+
+        //tempScreenSeg = VGAScreenSeg; // sega000
+        if (!Config.superPause)
+        {
+            Fonthand.JE_dString(Video.VGAScreenSeg, 120, 90, Helptext.miscText[22], (uint)Sprites.FONT_SHAPES);
+
+            Video.VGAScreen = Video.VGAScreenSeg;
+            Video.JE_showVGA();
+        }
+
+        Loudness.set_volume((byte)(Nortsong.tyrMusicVolume / 2), (byte)Nortsong.fxVolume);
+
+        // WITH_NETWORK 分支略過（守則 8：網路不移植）
+
+        do
+        {
+            Nortsong.setFrameCount(1);
+
+            Keyboard.waitUntilHasInputOrElapsed();
+
+            if ((Keyboard.keyboardGetInput(out KeyboardInput keyboardInput) &&
+                 keyboardInput.scancode != SdlKeys.SDL_SCANCODE_LCTRL &&
+                 keyboardInput.scancode != SdlKeys.SDL_SCANCODE_RCTRL &&
+                 keyboardInput.scancode != SdlKeys.SDL_SCANCODE_LALT &&
+                 keyboardInput.scancode != SdlKeys.SDL_SCANCODE_RALT) ||
+                Keyboard.mouseGetInput(InputFlags.INPUT_NO_MOTION, out _))
+            {
+                // WITH_NETWORK 分支略過（守則 8）
+
+                Keyboard.keysactive[SdlKeys.SDL_SCANCODE_P] = false;
+
+                done = true;
+            }
+
+            // WITH_NETWORK 分支略過（守則 8）
+        } while (!done);
+
+        // WITH_NETWORK 分支略過（守則 8）
+
+        Loudness.set_volume((byte)Nortsong.tyrMusicVolume, (byte)Nortsong.fxVolume);
+
+        //skipStarShowVGA = true;
+
+        Video.VGAScreen = temp_surface; /* side-effect of game_screen */
+
+        Keyboard.mouseSetRelative(true);
+    }
+
+    /// <summary>對應 mainint.c:JE_doInGameSetup —— 遊戲中設定選單初始化。</summary>
+    public static void JE_doInGameSetup()
+    {
+        Keyboard.mouseSetRelative(false);
+
+        Tyrian2.haltGame = false;
+
+        // WITH_NETWORK 分支略過（守則 8：網路不移植）
+
+        if (Tyrian2.yourInGameMenuRequest)
+        {
+            if (JE_inGameSetup())
+            {
+                Tyrian2.reallyEndLevel = true;
+                Tyrian2.playerEndLevel = true;
+            }
+            Tyrian2.quitRequested = false;
+
+            Keyboard.keysactive[SdlKeys.SDL_SCANCODE_ESCAPE] = false;
+
+            // WITH_NETWORK 分支略過（守則 8）
+        }
+
+        // WITH_NETWORK 分支略過（守則 8）
+
+        Tyrian2.yourInGameMenuRequest = false;
+
+        //skipStarShowVGA = true;
+
+        Keyboard.mouseSetRelative(true);
+    }
+
+    /// <summary>對應 mainint.c:JE_inGameSetup —— 遊戲中設定選單主迴圈。</summary>
+    public static bool JE_inGameSetup()
+    {
+        bool result = false;
+
+        SDL_Surface temp_surface = Video.VGAScreen;
+        Video.VGAScreen = Video.VGAScreenSeg; /* side-effect of game_screen */
+
+        const int MENU_ITEM_MUSIC_VOLUME = 0;
+        const int MENU_ITEM_EFFECTS_VOLUME = 1;
+        const int MENU_ITEM_DETAIL_LEVEL = 2;
+        const int MENU_ITEM_GAME_SPEED = 3;
+        const int MENU_ITEM_RETURN_TO_GAME = 4;
+        const int MENU_ITEM_QUIT = 5;
+
+        int[] helpIndexes = { 14, 14, 27, 28, 25, 26 };
+
+        if (Sprites.shopSpriteSheet.data == null)
+            Sprites.JE_loadCompShapes(ref Sprites.shopSpriteSheet, '1');  // need mouse pointer sprites
+
+        bool restart = true;
+
+        int menuItemsCount = Helptext.inGameText.Length;
+        int selectedIndex = MENU_ITEM_MUSIC_VOLUME;
+
+        const int yMenuItems = 20;
+        const int dyMenuItems = 20;
+        const int xMenuItem = 10;
+        const int xMenuItemName = xMenuItem;
+        const int wMenuItemName = 110;
+        const int xMenuItemValue = xMenuItemName + wMenuItemName;
+        const int wMenuItemValue = 90;
+        const int wMenuItem = wMenuItemName + wMenuItemValue;
+        const int hMenuItem = 13;
+
+        for (bool done = false; !done; )
+        {
+            Nortsong.setFrameCount(1);
+
+            if (restart)
+            {
+                // Main box
+                Vga256d.JE_barShade(Video.VGAScreen, 3, 13, 217, 137);
+                Vga256d.JE_barShade(Video.VGAScreen, 5, 15, 215, 135);
+
+                // Help box
+                Vga256d.JE_barShade(Video.VGAScreen, 3, 143, 257, 157);
+                Vga256d.JE_barShade(Video.VGAScreen, 5, 145, 255, 155);
+
+                CopyScreen(Video.VGAScreen2, Video.VGAScreen);
+
+                Mouse.mouseCursor = Mouse.MOUSE_POINTER_NORMAL;
+
+                restart = false;
+            }
+
+            // Restore background.
+            CopyScreen(Video.VGAScreen, Video.VGAScreen2);
+
+            // Draw menu items.
+            for (int i = 0; i < menuItemsCount; ++i)
+            {
+                int y = yMenuItems + dyMenuItems * i;
+
+                string name = Helptext.inGameText[i];
+
+                bool selected = i == selectedIndex;
+
+                FontDraw.drawFontHvShadow(Video.VGAScreen, xMenuItemName, y, name, Font.FONT_NORMAL, 15, (sbyte)(-4 + (selected ? 2 : 0)), false, 2);
+
+                switch (i)
+                {
+                case MENU_ITEM_MUSIC_VOLUME:
+                {
+                    Nortvars.JE_barDrawShadow(Video.VGAScreen, xMenuItemValue, y, 1, Loudness.music_disabled ? 12 : 16, (Nortsong.tyrMusicVolume + 6) / 12, 3, 13);
+                    break;
+                }
+                case MENU_ITEM_EFFECTS_VOLUME:
+                {
+                    Nortvars.JE_barDrawShadow(Video.VGAScreen, xMenuItemValue, y, 1, Loudness.samples_disabled ? 12 : 16, (Nortsong.fxVolume + 6) / 12, 3, 13);
+                    break;
+                }
+                case MENU_ITEM_DETAIL_LEVEL:
+                {
+                    FontDraw.drawFontHvShadow(Video.VGAScreen, xMenuItemValue, y, Helptext.detailLevel[Config.processorType - 1], Font.FONT_NORMAL, 15, (sbyte)(-4 + (selected ? 2 : 0)), false, 2);
+                    break;
+                }
+                case MENU_ITEM_GAME_SPEED:
+                {
+                    FontDraw.drawFontHvShadow(Video.VGAScreen, xMenuItemValue, y, Helptext.gameSpeedText[Config.gameSpeed - 1], Font.FONT_NORMAL, 15, (sbyte)(-4 + (selected ? 2 : 0)), false, 2);
+                    break;
+                }
+                }
+            }
+
+            // Draw help text.
+            Fonthand.JE_outTextAdjust(Video.VGAScreen, 10, 147, Helptext.mainMenuHelp[helpIndexes[selectedIndex]], 14, 6, (uint)Sprites.TINY_FONT, true);
+
+            Mouse.JE_mouseStart();
+            Video.JE_showVGA();
+            Mouse.JE_mouseReplace();
+
+            Keyboard.waitUntilElapsed();
+            Keyboard.waitUntilHasInput(InputFlags.INPUT_ANY);
+
+            // Handle interaction.
+
+            bool action = false;
+            bool leftAction = false;
+            bool rightAction = false;
+
+            if (Keyboard.mouseGetInput(InputFlags.INPUT_ANY, out MouseInput mouseInput))
+            {
+                // Find menu item that was hovered or clicked.
+                if (mouseInput.x >= xMenuItem && mouseInput.x < xMenuItem + wMenuItem)
+                {
+                    for (int i = 0; i < menuItemsCount; ++i)
+                    {
+                        int yMenuItem = yMenuItems + dyMenuItems * i;
+                        if (mouseInput.y >= yMenuItem && mouseInput.y < yMenuItem + hMenuItem)
+                        {
+                            if (selectedIndex != i)
+                            {
+                                Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                                selectedIndex = i;
+                            }
+
+                            if (mouseInput.button == SdlKeys.SDL_BUTTON_LEFT &&
+                                mouseInput.x >= xMenuItem && mouseInput.x < xMenuItem + wMenuItem &&
+                                mouseInput.y >= yMenuItem && mouseInput.y < yMenuItem + hMenuItem)
+                            {
+                                // Act on menu item via name.
+                                if (mouseInput.x >= xMenuItemName && mouseInput.x < xMenuItemName + wMenuItemName)
+                                {
+                                    action = true;
+                                }
+
+                                // Act on menu item via value.
+                                else if (mouseInput.x >= xMenuItemValue && mouseInput.x < xMenuItemValue + wMenuItemValue)
+                                {
+                                    switch (i)
+                                    {
+                                    case MENU_ITEM_MUSIC_VOLUME:
+                                    {
+                                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                                        int w = ((255 + 6) / 12) * (3 + 1) - 1;
+
+                                        int value = (mouseInput.x - xMenuItemValue) * 255 / (w - 1);
+                                        Nortsong.tyrMusicVolume = (ushort)Math.Min(Math.Max(0, value), 255);
+
+                                        Loudness.set_volume((byte)Nortsong.tyrMusicVolume, (byte)Nortsong.fxVolume);
+                                        break;
+                                    }
+                                    case MENU_ITEM_EFFECTS_VOLUME:
+                                    {
+                                        int w = ((255 + 6) / 12) * (3 + 1) - 1;
+
+                                        int value = (mouseInput.x - xMenuItemValue) * 255 / (w - 1);
+                                        Nortsong.fxVolume = (ushort)Math.Min(Math.Max(0, value), 255);
+
+                                        Loudness.set_volume((byte)Nortsong.tyrMusicVolume, (byte)Nortsong.fxVolume);
+
+                                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                                        break;
+                                    }
+                                    case MENU_ITEM_DETAIL_LEVEL:
+                                    case MENU_ITEM_GAME_SPEED:
+                                    {
+                                        rightAction = true;
+                                        break;
+                                    }
+                                    default:
+                                        break;
+                                    }
+                                }
+                            }
+
+                            break;
+                        }
+                    }
+                }
+
+                if (mouseInput.button == SdlKeys.SDL_BUTTON_RIGHT)
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING);
+
+                    done = true;
+                }
+            }
+            else if (Keyboard.keyboardGetInput(out KeyboardInput keyboardInput))
+            {
+                switch (keyboardInput.scancode)
+                {
+                case SdlKeys.SDL_SCANCODE_UP:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                    selectedIndex = selectedIndex == 0
+                        ? menuItemsCount - 1
+                        : selectedIndex - 1;
+                    break;
+                }
+                case SdlKeys.SDL_SCANCODE_DOWN:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                    selectedIndex = selectedIndex == menuItemsCount - 1
+                        ? 0
+                        : selectedIndex + 1;
+                    break;
+                }
+                case SdlKeys.SDL_SCANCODE_LEFT:
+                {
+                    leftAction = true;
+                    break;
+                }
+                case SdlKeys.SDL_SCANCODE_RIGHT:
+                {
+                    rightAction = true;
+                    break;
+                }
+                case SdlKeys.SDL_SCANCODE_SPACE:
+                case SdlKeys.SDL_SCANCODE_RETURN:
+                {
+                    action = true;
+                    break;
+                }
+                case SdlKeys.SDL_SCANCODE_ESCAPE:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING);
+
+                    done = true;
+                    break;
+                }
+                case SdlKeys.SDL_SCANCODE_W:
+                {
+                    if (selectedIndex == MENU_ITEM_DETAIL_LEVEL)
+                    {
+                        Config.processorType = 6;
+                        Config.JE_initProcessorType();
+                    }
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+
+            if (action)
+            {
+                switch (selectedIndex)
+                {
+                case MENU_ITEM_MUSIC_VOLUME:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+
+                    Loudness.music_disabled = !Loudness.music_disabled;
+                    break;
+                }
+                case MENU_ITEM_EFFECTS_VOLUME:
+                {
+                    Loudness.samples_disabled = !Loudness.samples_disabled;
+
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+                    break;
+                }
+                case MENU_ITEM_RETURN_TO_GAME:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+
+                    done = true;
+                    break;
+                }
+                case MENU_ITEM_QUIT:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+
+                    if (Params.constantPlay)
+                        Varz.JE_tyrianHalt(0);
+
+                    if (Config.isNetworkGame)
+                    {
+                        /*Tell other computer to exit*/
+                        Tyrian2.haltGame = true;
+                        Tyrian2.playerEndLevel = true;
+                    }
+
+                    result = true;
+                    done = true;
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+            else if (leftAction)
+            {
+                switch (selectedIndex)
+                {
+                case MENU_ITEM_MUSIC_VOLUME:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                    Nortsong.JE_changeVolume(ref Nortsong.tyrMusicVolume, -12, ref Nortsong.fxVolume, 0);
+                    break;
+                }
+                case MENU_ITEM_EFFECTS_VOLUME:
+                {
+                    Nortsong.JE_changeVolume(ref Nortsong.tyrMusicVolume, 0, ref Nortsong.fxVolume, -12);
+
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                    break;
+                }
+                case MENU_ITEM_DETAIL_LEVEL:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                    Config.processorType = (byte)(Config.processorType > 1 ? Config.processorType - 1 : 4);
+                    Config.JE_initProcessorType();
+                    Config.JE_setNewGameSpeed();
+                    break;
+                }
+                case MENU_ITEM_GAME_SPEED:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                    Config.gameSpeed = (byte)(Config.gameSpeed > 1 ? Config.gameSpeed - 1 : 5);
+                    Config.JE_initProcessorType();
+                    Config.JE_setNewGameSpeed();
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+            else if (rightAction)
+            {
+                switch (selectedIndex)
+                {
+                case MENU_ITEM_MUSIC_VOLUME:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                    Nortsong.JE_changeVolume(ref Nortsong.tyrMusicVolume, 12, ref Nortsong.fxVolume, 0);
+                    break;
+                }
+                case MENU_ITEM_EFFECTS_VOLUME:
+                {
+                    Nortsong.JE_changeVolume(ref Nortsong.tyrMusicVolume, 0, ref Nortsong.fxVolume, 12);
+
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                    break;
+                }
+                case MENU_ITEM_DETAIL_LEVEL:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                    Config.processorType = (byte)(Config.processorType < 4 ? Config.processorType + 1 : 1);
+                    Config.JE_initProcessorType();
+                    Config.JE_setNewGameSpeed();
+                    break;
+                }
+                case MENU_ITEM_GAME_SPEED:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                    Config.gameSpeed = (byte)(Config.gameSpeed < 5 ? Config.gameSpeed + 1 : 1);
+                    Config.JE_initProcessorType();
+                    Config.JE_setNewGameSpeed();
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+        }
+
+        Video.VGAScreen = temp_surface; /* side-effect of game_screen */
+
+        return result;
+    }
+
+    /// <summary>對應 mainint.c:JE_inGameHelp —— 遊戲中說明畫面。</summary>
+    public static void JE_inGameHelp()
+    {
+        Keyboard.mouseSetRelative(false);
+
+        Nortsong.setFrameCount(1);
+
+        SDL_Surface temp_surface = Video.VGAScreen;
+        Video.VGAScreen = Video.VGAScreenSeg; /* side-effect of game_screen */
+
+        //tempScreenSeg = VGAScreenSeg;
+
+        Vga256d.JE_barShade(Video.VGAScreen, 1, 1, 262, 182); /*Main Box*/
+        Vga256d.JE_barShade(Video.VGAScreen, 3, 3, 260, 180);
+        Vga256d.JE_barShade(Video.VGAScreen, 5, 5, 258, 178);
+        Vga256d.JE_barShade(Video.VGAScreen, 7, 7, 256, 176);
+        Vga256d.fill_rectangle_xy(Video.VGAScreen, 9, 9, 254, 174, 0);
+
+        if (Config.twoPlayerMode)  // Two-Player Help
+        {
+            Helptext.JE_HBox(Video.VGAScreen, 20, 4, 36, 50, 7, 3, 3);
+
+            // weapon help
+            Sprites.blit_sprite(Video.VGAScreenSeg, 2, 21, (uint)Sprites.OPTION_SHAPES, 43);
+            Helptext.JE_HBox(Video.VGAScreen, 55, 20, 37, 40, 7, 5, 3);
+
+            // sidekick help
+            Sprites.blit_sprite(Video.VGAScreenSeg, 5, 36, (uint)Sprites.OPTION_SHAPES, 41);
+            Helptext.JE_HBox(Video.VGAScreen, 40, 43, 34, 44, 7, 5, 3);
+
+            // shield/armor help
+            Sprites.blit_sprite(Video.VGAScreenSeg, 2, 79, (uint)Sprites.OPTION_SHAPES, 42);
+            Helptext.JE_HBox(Video.VGAScreen, 54, 84, 35, 40, 7, 5, 3);
+
+            Helptext.JE_HBox(Video.VGAScreen, 5, 126, 38, 55, 7, 5, 3);
+            Helptext.JE_HBox(Video.VGAScreen, 5, 160, 39, 55, 7, 5, 3);
+        }
+        else
+        {
+            // power bar help
+            Sprites.blit_sprite(Video.VGAScreenSeg, 15, 5, (uint)Sprites.OPTION_SHAPES, 40);
+            Helptext.JE_HBox(Video.VGAScreen, 40, 10, 31, 45, 7, 5, 3);
+
+            // weapon help
+            Sprites.blit_sprite(Video.VGAScreenSeg, 5, 37, (uint)Sprites.OPTION_SHAPES, 39);
+            Helptext.JE_HBox(Video.VGAScreen, 40, 40, 32, 44, 7, 5, 3);
+            Helptext.JE_HBox(Video.VGAScreen, 40, 60, 33, 44, 7, 5, 3);
+
+            // sidekick help
+            Sprites.blit_sprite(Video.VGAScreenSeg, 5, 98, (uint)Sprites.OPTION_SHAPES, 41);
+            Helptext.JE_HBox(Video.VGAScreen, 40, 103, 34, 44, 7, 5, 3);
+
+            // shield/armor help
+            Sprites.blit_sprite(Video.VGAScreenSeg, 2, 138, (uint)Sprites.OPTION_SHAPES, 42);
+            Helptext.JE_HBox(Video.VGAScreen, 54, 143, 35, 40, 7, 5, 3);
+        }
+
+        // "press a key"
+        Sprites.blit_sprite(Video.VGAScreenSeg, 16, 189, (uint)Sprites.OPTION_SHAPES, 36);  // in-game text area
+        Fonthand.JE_outText(Video.VGAScreenSeg, 120 - Fonthand.JE_textWidth(Helptext.miscText[5 - 1], (uint)Sprites.TINY_FONT) / 2 + 20, 190, Helptext.miscText[5 - 1], 0, 4);
+
+        while (true)
+        {
+            Mouse.JE_mouseStart();
+            Video.JE_showVGA();
+            Mouse.JE_mouseReplace();
+
+            Keyboard.waitUntilElapsed();
+            Keyboard.waitUntilHasInput(InputFlags.INPUT_ANY);
+
+            if (Keyboard.getInput())
+                break;
+
+            Nortsong.setFrameCount(1);
+        }
+
+        textErase = 1;
+
+        Video.VGAScreen = temp_surface;
+
+        Keyboard.mouseSetRelative(true);
+    }
     public static void JE_handleChat() { /* TODO: 網路聊天（network.c 不移植） */ }
     public static void JE_gammaCorrect(SDL_Color[] colors, byte gamma) { /* TODO: 待移植 JE_gammaCorrect（gamma 校正） */ }
     /// <summary>對應 backgrnd.c:JE_filterScreen —— 濾鏡淡入淡出 + 全螢幕色相覆蓋 + 爆炸透明亮度。</summary>

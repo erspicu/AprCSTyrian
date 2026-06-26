@@ -1410,7 +1410,7 @@ internal static unsafe partial class Tyrian2
                 Keyboard.keyboardClearInput();
 
                 Varz.skipStarShowVGA = false;
-                Mainint.JE_mainKeyboardInput(); // TODO: 待移植
+                Mainint.JE_mainKeyboardInput();
                 if (Varz.skipStarShowVGA)
                     goto level_loop;
             }
@@ -1419,7 +1419,7 @@ internal static unsafe partial class Tyrian2
             {
                 Mainint.pause_pressed = false;
 
-                Mainint.JE_pauseGame(); // TODO: 待移植（非網路）
+                Mainint.JE_pauseGame();
             }
 
             if (Mainint.ingamemenu_pressed)
@@ -1427,7 +1427,7 @@ internal static unsafe partial class Tyrian2
                 Mainint.ingamemenu_pressed = false;
 
                 yourInGameMenuRequest = true;
-                Mainint.JE_doInGameSetup(); // TODO: 待移植
+                Mainint.JE_doInGameSetup();
                 Varz.skipStarShowVGA = true;
             }
         }
