@@ -58,7 +58,7 @@ internal static unsafe partial class Tyrian2
     }
 
     // === 待移植的重型子函式（暫 stub） ===
-    private static void JE_itemScreen() { /* TODO: game_menu.c 商店/裝備畫面 */ }
+    // JE_itemScreen 商店主迴圈已移植 → GameMenu.JE_itemScreen()（'I' 命令直接呼叫）
     private static void JE_nextEpisode() { /* TODO: 進入下一章節 */ }
     private static void JE_displayText() { /* TODO: 過場警告文字顯示 */ }
     private static void load_next_demo() { /* TODO: demo 載入 */ }
@@ -244,7 +244,7 @@ internal static unsafe partial class Tyrian2
                                     }
                                     itemAvailMax[i] = (byte)j;
                                 }
-                                JE_itemScreen();
+                                GameMenu.JE_itemScreen();
                                 break;
 
                             case 'L':  // Play level.

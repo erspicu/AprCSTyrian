@@ -117,6 +117,7 @@ internal static unsafe partial class Config
     public static bool galagaMode;
     public static bool extraGame;
     public static bool twoPlayerMode, twoPlayerLinked, onePlayerAction, superTyrian;
+    public const bool isNetworkGame = false; // network.c 不移植 → 恆 false
     public static bool trentWin = false;
     public static byte superArcadeMode;
     public static byte superArcadePowerUp;

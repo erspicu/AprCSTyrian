@@ -8,6 +8,26 @@ internal static class SdlKeys
 {
     public const int SDL_NUM_SCANCODES = 512;
 
+    /// <summary>對應 SDL_GetScancodeName（Core SDL-free 版，covers 設定畫面常用鍵；其餘回 fallback）。</summary>
+    public static string SDL_GetScancodeName(int sc)
+    {
+        if (sc >= 4 && sc <= 29) return ((char)('A' + (sc - 4))).ToString();   // A..Z
+        if (sc >= 30 && sc <= 38) return ((char)('1' + (sc - 30))).ToString(); // 1..9
+        if (sc == 39) return "0";
+        if (sc >= 58 && sc <= 69) return "F" + (sc - 57);                      // F1..F12
+        return sc switch
+        {
+            40 => "Return", 41 => "Escape", 42 => "Backspace", 43 => "Tab", 44 => "Space",
+            45 => "-", 46 => "=", 47 => "[", 48 => "]", 49 => "\\",
+            51 => ";", 52 => "'", 53 => "`", 54 => ",", 55 => ".", 56 => "/",
+            74 => "Home", 75 => "PageUp", 76 => "Delete", 77 => "End", 78 => "PageDown",
+            79 => "Right", 80 => "Left", 81 => "Down", 82 => "Up",
+            224 => "Left Ctrl", 225 => "Left Shift", 226 => "Left Alt",
+            228 => "Right Ctrl", 229 => "Right Shift", 230 => "Right Alt",
+            _ => $"Key{sc}",
+        };
+    }
+
     // 字母
     public const int SDL_SCANCODE_A = 4, SDL_SCANCODE_B = 5, SDL_SCANCODE_C = 6, SDL_SCANCODE_D = 7,
         SDL_SCANCODE_E = 8, SDL_SCANCODE_F = 9, SDL_SCANCODE_G = 10, SDL_SCANCODE_H = 11, SDL_SCANCODE_I = 12,
@@ -61,7 +81,7 @@ internal static class SdlKeys
     public const int KMOD_GUI = KMOD_LGUI | KMOD_RGUI;
 
     // Keycode（小寫字母/符號 = ASCII）
-    public const int SDLK_l = 'l', SDLK_o = 'o', SDLK_r = 'r', SDLK_d = 'd';
+    public const int SDLK_l = 'l', SDLK_o = 'o', SDLK_r = 'r', SDLK_d = 'd', SDLK_s = 's';
     public const int SDLK_g = 'g', SDLK_RIGHTBRACKET = ']';
 
     // 滑鼠按鍵

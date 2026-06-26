@@ -102,6 +102,7 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - [x] **game_menu.c JE_updateNavScreen**(星圖導航畫面總繪製：網格/星球/虛線 + 平滑捲動 + 動畫)
 - [x] **game_menu.c 船艦規格屏**：JE_drawShipSpecs(綠化技術屏)+JE_scaleInPicture(放大進場)+JE_doShipSpecs
 - [x] **game_menu.c 武器預覽**：JE_initWeaponView/weaponViewFrame/weaponSimUpdate(武器射擊模擬+power bar+升降級成本) + 遊戲內星空
+- [x] **game_menu.c JE_itemScreen 商店主迴圈完整移植**：JE_itemScreen + JE_menuFunction + draw_ship_illustration + load_cubes/load_cube + JE_drawMainMenuHelpText + JE_quitRequest;接入 JE_loadMap。對照驗證:商店畫面(frame 224-276)與原版逐像素吻合(原為黑屏)
 - [x] **game_menu.c JE_drawLines/JE_drawNavLines**(網格背景線 + 星圖導航網格)
 - 註：config_file.c(opentyrian.cfg INI)、關卡地圖載入(megaData)、varz 其餘重度函式、
       主遊戲邏輯(mainint titleScreen/JE_main、tyrian2、game_menu、opentyr 進入點) 待後續

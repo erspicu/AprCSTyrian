@@ -35,6 +35,14 @@ internal static unsafe partial class GameMenu
     public static readonly CubeStruct[] cube = { new(), new(), new(), new() };
     public static readonly PlayerItems[] old_items = new PlayerItems[2];
     public static bool leftPower, rightPower, rightPowerAfford;
+    // JE_itemScreen 商店狀態（對應 game_menu.c 的 file-scope/區域變數）
+    public static int col, colC;            // 選單閃爍色
+    public static int newPal, curPal;       // 調色盤切換
+    public static int oldMenu, oldPal;      // 快速存檔返回
+    public static bool quikSave, backFromHelp, firstMenu9, flash, paletteChanged;
+    public static int yLoc, yChg, currentCube; // 資料方塊捲動
+    public static int lastDirection = 1;
+    public static byte lastCurSel;
 #pragma warning restore CS0649
 
     /// <summary>對應 game_menu.c:JE_drawMenuHeader —— 畫選單標題。</summary>
