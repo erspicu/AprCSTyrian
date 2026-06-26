@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Core: 純遊戲邏輯層 (Ports & Adapters 的核心)。
+    嚴禁引用任何 SDL / 平台相依組件 — 只定義 Ports 介面，由 App 提供 Adapter。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>AprCSTyrian.Core</RootNamespace>
+    <AssemblyName>AprCSTyrian.Core</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>
