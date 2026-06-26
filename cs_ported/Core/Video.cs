@@ -42,6 +42,7 @@ internal static unsafe class Video
     {
         // 把 VGAScreen 的 indexed 影格送到平台呈現（放大/轉 RGB 由 adapter 處理）。
         Globals.Video.Present(new ReadOnlySpan<byte>(VGAScreen.pixels, vga_width * vga_height));
+        KeyLog.OnShowVGA(); // 移植對照：前進 frame + 截圖（KEYLOG/KEYLOG_REPLAY 啟用時）
     }
 
     // 視窗/座標相關（視窗由 adapter 擁有；這裡轉呼叫 IVideoBackend）

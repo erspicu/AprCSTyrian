@@ -237,6 +237,8 @@ internal static class Keyboard
                 throw new TyrianHaltException(0); // 對應 exit(0)
             }
         }
+
+        KeyLog.InjectInput(); // 移植對照：重播模式下用原版 log 覆寫 keysactive
     }
 
     private static void HandleTextInput(string? text)
