@@ -178,6 +178,77 @@ internal static unsafe partial class Tyrian2
         return avail;
     }
 
+    /// <summary>對應 JE_createNewEventEnemy：在 [enemyOffset, +25) 找空槽生成事件敵人。</summary>
+    public static void JE_createNewEventEnemy(byte enemyTypeOfs, ushort enemyOffset, short uniqueShapeTableI)
+    {
+        Varz.b = 0;
+        for (int i = enemyOffset; i < enemyOffset + 25; i++)
+            if (Varz.enemyAvail[i] == 1) { Varz.b = i + 1; break; }
+
+        if (Varz.b == 0)
+            return;
+
+        int en = Varz.b - 1;
+        Varz.tempW = (ushort)(eventRec[eventLoc - 1].eventdat + enemyTypeOfs);
+        Varz.enemyAvail[en] = (byte)JE_makeEnemy(en, Varz.tempW, uniqueShapeTableI);
+
+        if (eventRec[eventLoc - 1].eventdat2 != -99)
+        {
+            int ex2 = eventRec[eventLoc - 1].eventdat2;
+            switch (enemyOffset)
+            {
+                case 0:
+                    Varz.enemy[en].ex = (short)(ex2 - (Backgrnd.mapX - 1) * 24);
+                    Varz.enemy[en].ey -= (short)Backgrnd.backMove2;
+                    break;
+                case 25:
+                case 75:
+                    Varz.enemy[en].ex = (short)(ex2 - (Backgrnd.mapX - 1) * 24 - 12);
+                    Varz.enemy[en].ey -= (short)Backgrnd.backMove;
+                    break;
+                case 50:
+                    if (background3x1)
+                        Varz.enemy[en].ex = (short)(ex2 - (Backgrnd.mapX - 1) * 24 - 12);
+                    else
+                        Varz.enemy[en].ex = (short)(ex2 - Backgrnd.mapX3 * 24 - 24 * 2 + 6);
+                    Varz.enemy[en].ey -= (short)Backgrnd.backMove3;
+                    if (background3x1b)
+                        Varz.enemy[en].ex -= 6;
+                    break;
+            }
+            Varz.enemy[en].ey = -28;
+            if (background3x1b && enemyOffset == 50)
+                Varz.enemy[en].ey += 4;
+        }
+
+        if (smallEnemyAdjust && Varz.enemy[en].size == 0)
+        {
+            Varz.enemy[en].ex -= 10;
+            Varz.enemy[en].ey -= 7;
+        }
+
+        Varz.enemy[en].ey += eventRec[eventLoc - 1].eventdat5;
+        Varz.enemy[en].eyc += (sbyte)eventRec[eventLoc - 1].eventdat3;
+        Varz.enemy[en].linknum = eventRec[eventLoc - 1].eventdat4;
+        Varz.enemy[en].fixedmovey = eventRec[eventLoc - 1].eventdat6;
+    }
+
+    public static void JE_eventJump(ushort jump)
+    {
+        if (jump == 65535)
+        {
+            curLoc = returnLoc;
+        }
+        else
+        {
+            returnLoc = (ushort)(curLoc + 1);
+            curLoc = jump;
+        }
+        ushort t = 0;
+        do { t++; } while (!(eventRec[t - 1].eventtime >= curLoc));
+        eventLoc = (ushort)(t - 1);
+    }
+
     private static float difficultyValue(short value)
     {
         switch ((int)Config.difficultyLevel)

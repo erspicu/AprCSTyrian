@@ -16,5 +16,13 @@ internal static class Lvlmast
     public const int SPECIAL_NUM = 46;
 
     public const int ENEMY_NUM = 850;
-    // shapeFile[34] 資料表待後續移植
+
+    /// <summary>對應 lvlmast.c:shapeFile[34] —— 敵人 shape 檔對應字元（[25] 原碼註記應為 '&'）。</summary>
+    public static readonly char[] shapeFile =
+    {
+        '2', '4', '7', '8', 'A', 'B', 'C', 'D', 'E', 'F',
+        'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+        'Q', 'R', 'S', 'T', 'U', '5', '#', 'V', '0', '@',
+        '3', '^', '5', '9',
+    };
 }

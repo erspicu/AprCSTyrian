@@ -45,6 +45,37 @@ internal static unsafe partial class Tyrian2
                 }
                 break;
 
+            case 5: // load enemy shape banks
+                {
+                    byte[] tabs =
+                    {
+                        ev.eventdat  > 0 ? (byte)ev.eventdat  : (byte)0,
+                        ev.eventdat2 > 0 ? (byte)ev.eventdat2 : (byte)0,
+                        ev.eventdat3 > 0 ? (byte)ev.eventdat3 : (byte)0,
+                        ev.eventdat4 > 0 ? (byte)ev.eventdat4 : (byte)0,
+                    };
+                    for (int i = 0; i < tabs.Length; ++i)
+                    {
+                        if (Sprites.enemySpriteSheetIds[i] != tabs[i])
+                        {
+                            if (tabs[i] > 0)
+                                Sprites.JE_loadCompShapes(ref Sprites.enemySpriteSheets[i], Lvlmast.shapeFile[tabs[i] - 1]);
+                            else
+                                Sprites.free_sprite2s(ref Sprites.enemySpriteSheets[i]);
+                            Sprites.enemySpriteSheetIds[i] = tabs[i];
+                        }
+                    }
+                }
+                break;
+
+            case 6: // Ground Enemy
+                JE_createNewEventEnemy(0, 25, 0);
+                break;
+
+            case 7: // Top Enemy
+                JE_createNewEventEnemy(0, 50, 0);
+                break;
+
             case 8:
                 Config.starActive = false;
                 break;

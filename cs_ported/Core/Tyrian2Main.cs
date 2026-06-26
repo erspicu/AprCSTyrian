@@ -59,6 +59,9 @@ internal static unsafe partial class Tyrian2
         player[0].x = 100; player[0].y = 180;
         player[1].x = 200; player[1].y = 180;
 
+        for (int i = 0; i < 100; ++i)
+            Varz.enemyAvail[i] = 1; // 所有敵人槽初始為空（對應 memset enemyAvail,1）
+
         eventLoc = 1;
         curLoc = 0;
         Backgrnd.backMove = 1;
@@ -117,6 +120,44 @@ internal static unsafe partial class Tyrian2
             // --- BACKGROUND 2 & 3 ---
             Backgrnd.draw_background_2(Video.VGAScreen);
             Backgrnd.draw_background_3(Video.VGAScreen);
+
+            // === 簡化敵人更新/繪製（完整 JE_drawEnemy 445 行待移植：homing/彈跳/砲塔發射/size/傷害）===
+            for (int z = 0; z < 100; z++)
+            {
+                if (Varz.enemyAvail[z] == 1)
+                    continue; // 空槽
+
+                // 動畫循環
+                if (Varz.enemy[z].aniactive == 1)
+                {
+                    Varz.enemy[z].enemycycle++;
+                    if (Varz.enemy[z].enemycycle == Varz.enemy[z].animax)
+                        Varz.enemy[z].aniactive = Varz.enemy[z].aniwhenfire;
+                    else if (Varz.enemy[z].enemycycle > Varz.enemy[z].ani)
+                        Varz.enemy[z].enemycycle = Varz.enemy[z].animin;
+                }
+                if (Varz.enemy[z].enemycycle < 1)
+                    Varz.enemy[z].enemycycle = 1;
+
+                // 移動（最小：速度 + 隨背景下移）
+                Varz.enemy[z].ex += Varz.enemy[z].exc;
+                Varz.enemy[z].ey += (short)(Varz.enemy[z].eyc + Backgrnd.backMove);
+
+                // 回收出界敵人
+                if (Varz.enemy[z].ey > 200 || Varz.enemy[z].ex < -40 || Varz.enemy[z].ex > 320)
+                {
+                    Varz.enemyAvail[z] = 1;
+                    continue;
+                }
+
+                // 繪製敵人 sprite
+                if (Varz.enemy[z].sprite2s.data != null)
+                {
+                    int idx = Varz.enemy[z].egr[Varz.enemy[z].enemycycle - 1];
+                    if (idx > 0 && idx != 999)
+                        Sprites.blit_sprite2(Video.VGAScreen, Varz.enemy[z].ex + Backgrnd.tempMapXOfs, Varz.enemy[z].ey, Varz.enemy[z].sprite2s, (uint)idx);
+                }
+            }
 
             // === 簡化玩家控制（完整 JE_playerMovement 待移植：射擊/僚機/選項/爆炸/復活）===
             const int spd = 2; // CURRENT_KEY_SPEED=1，骨架略加快以利操作
