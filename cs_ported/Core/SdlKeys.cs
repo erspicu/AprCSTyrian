@@ -60,8 +60,9 @@ internal static class SdlKeys
     public const int KMOD_ALT = KMOD_LALT | KMOD_RALT;
     public const int KMOD_GUI = KMOD_LGUI | KMOD_RGUI;
 
-    // Keycode（僅 lordKeySyms 需要：小寫字母 = ASCII）
+    // Keycode（小寫字母/符號 = ASCII）
     public const int SDLK_l = 'l', SDLK_o = 'o', SDLK_r = 'r', SDLK_d = 'd';
+    public const int SDLK_g = 'g', SDLK_RIGHTBRACKET = ']';
 
     // 滑鼠按鍵
     public const int SDL_BUTTON_LEFT = 1, SDL_BUTTON_MIDDLE = 2, SDL_BUTTON_RIGHT = 3;

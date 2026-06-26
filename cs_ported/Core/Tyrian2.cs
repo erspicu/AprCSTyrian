@@ -253,8 +253,46 @@ internal static unsafe partial class Tyrian2
         }
     }
 
+    public static bool newGame()
+    {
+        var player = Players.player;
+
+        if (Menus.gameplaySelect())
+        {
+            if (Menus.episodeSelect() && Menus.difficultySelect())
+                Varz.gameLoaded = true;
+
+            Config.initialDifficulty = Config.difficultyLevel;
+
+            if (Config.onePlayerAction)
+            {
+                player[0].cash = 0;
+                player[0].items.ship = 8;  // Stalker
+            }
+            else if (Config.twoPlayerMode)
+            {
+                for (int i = 0; i < 2; ++i)
+                    player[i].cash = 0;
+                player[0].items.ship = 11;  // Silver Ship
+                Config.difficultyLevel++;   // one step harder for 2-player
+                Config.inputDevice[0] = 1;
+                Config.inputDevice[1] = 2;
+            }
+            else if (Params.richMode)
+            {
+                player[0].cash = 1000000;
+            }
+            else if (Varz.gameLoaded)
+            {
+                uint[] initial_cash = { 10000, 15000, 20000, 30000 };
+                player[0].cash = initial_cash[Episodes.episodeNum - 1];
+            }
+        }
+
+        return Varz.gameLoaded;
+    }
+
     // === 子畫面 stub（待後續移植；目前回到標題） ===
-    private static bool newGame() => false;
     private static bool JE_loadScreen() => false;
     private static void JE_highScoreScreen() { }
     private static void JE_helpSystem(byte startTopic) { }
