@@ -30,6 +30,118 @@ internal static unsafe partial class Mainint
 
     public static bool performSave;
 
+    /// <summary>對應 mainint.c:adjust_difficulty —— 依分數調整難度（取 max）。</summary>
+    public static void adjust_difficulty()
+    {
+        float[] score_multiplier = { 0, 0.4f, 0.8f, 1.3f, 1.6f, 2, 2, 3, 3, 3 };
+        var player = Players.player;
+        int idiff = Config.initialDifficulty;
+        if (idiff < 1 || idiff > 9) idiff = 2;
+
+        ulong score = Config.twoPlayerMode ? ((ulong)player[0].cash + player[1].cash) : player[0].cash;
+        ulong adjusted = (ulong)MathF.Round(score * score_multiplier[idiff]);
+
+        int nd;
+        if (Config.twoPlayerMode)
+            nd = adjusted < 10000 ? Config.DIFFICULTY_EASY : adjusted < 20000 ? Config.DIFFICULTY_NORMAL :
+                 adjusted < 50000 ? Config.DIFFICULTY_HARD : adjusted < 80000 ? Config.DIFFICULTY_IMPOSSIBLE :
+                 adjusted < 125000 ? Config.DIFFICULTY_INSANITY : adjusted < 200000 ? Config.DIFFICULTY_SUICIDE :
+                 adjusted < 400000 ? Config.DIFFICULTY_MANIACAL : adjusted < 600000 ? Config.DIFFICULTY_ZINGLON : Config.DIFFICULTY_NORTANEOUS;
+        else
+            nd = adjusted < 40000 ? Config.DIFFICULTY_EASY : adjusted < 70000 ? Config.DIFFICULTY_NORMAL :
+                 adjusted < 150000 ? Config.DIFFICULTY_HARD : adjusted < 300000 ? Config.DIFFICULTY_IMPOSSIBLE :
+                 adjusted < 600000 ? Config.DIFFICULTY_INSANITY : adjusted < 1000000 ? Config.DIFFICULTY_SUICIDE :
+                 adjusted < 2000000 ? Config.DIFFICULTY_MANIACAL : adjusted < 3000000 ? Config.DIFFICULTY_ZINGLON : Config.DIFFICULTY_NORTANEOUS;
+
+        Config.difficultyLevel = (sbyte)Math.Max((int)Config.difficultyLevel, nd);
+    }
+
+    /// <summary>
+    /// 移植 mainint.c:JE_endLevelAni —— 過關摘要畫面（完成關卡名/現金/摧毀率/難度調整/ShipEdit 權限）。
+    /// 簡化：略過 cube 收集動畫。
+    /// </summary>
+    public static void JE_endLevelAni()
+    {
+        var player = Players.player;
+        var seg = Video.VGAScreenSeg;
+
+        if (!Params.constantPlay)
+        {
+            // 開放 ShipEdit 權限
+            for (int p = 0; p < 2; ++p)
+            {
+                for (int i = 0; i < 2; ++i)
+                {
+                    int e = player[p].items.weapon[i].id - 1;
+                    if (e >= 0 && e < Config.editorItemAvail.Length) Config.editorItemAvail[e] = 1;
+                }
+                for (int i = 0; i < 2; ++i)
+                {
+                    int e = 50 + player[p].items.sidekick[i];
+                    if (e >= 0 && e < Config.editorItemAvail.Length) Config.editorItemAvail[e] = 1;
+                }
+            }
+            int es = 80 + player[0].items.special;
+            if (es < Config.editorItemAvail.Length) Config.editorItemAvail[es] = 1;
+        }
+
+        adjust_difficulty();
+
+        player[0].last_items = player[0].items;
+        StrCpy(Config.lastLevelName, CStr(Config.levelName));
+
+        Nortsong.frameCountMax = 4;
+        Fonthand.textGlowFont = (byte)Sprites.SMALL_FONT_SHAPES;
+        Palette.set_colors(new SDL_Color(255, 255, 255), 254, 254);
+
+        if (!Varz.levelTimer || levelTimerCountdown > 0 || Episodes.episodeNum != 4)
+            Nortsong.JE_playSampleNum((byte)Sndmast.V_LEVEL_END);
+        else
+            Loudness.play_song(21);
+
+        string lvl = CStr(Config.levelName);
+        if (Episodes.bonusLevel)
+            Fonthand.JE_outTextGlow(seg, 20, 20, Helptext.miscText[16]);
+        else if (Players.all_players_alive())
+            Fonthand.JE_outTextGlow(seg, 20, 20, $"{Helptext.miscText[26]} {lvl}"); // Completed
+        else
+            Fonthand.JE_outTextGlow(seg, 20, 20, $"{Helptext.miscText[61]} {lvl}"); // Exiting
+
+        if (Config.twoPlayerMode)
+            for (int i = 0; i < 2; ++i)
+                Fonthand.JE_outTextGlow(seg, 30, 50 + 20 * i, $"{Helptext.miscText[40 + i]} {player[i].cash}");
+        else
+            Fonthand.JE_outTextGlow(seg, 30, 50, $"{Helptext.miscText[27]} {player[0].cash}");
+
+        int pct = totalEnemyZero() ? 0 : (int)MathF.Round(enemyKilled * 100f / totalEnemyOf());
+        Fonthand.JE_outTextGlow(seg, 40, 90, $"{Helptext.miscText[62]} {pct}%");
+        if (!Params.constantPlay)
+            editorLevel += (ushort)(pct / 5);
+
+        if (!Config.onePlayerAction && !Config.twoPlayerMode)
+        {
+            Fonthand.JE_outTextGlow(seg, 30, 120, Helptext.miscText[3]); // Cubes
+            if (Config.cubeMax == 0)
+                Fonthand.JE_outTextGlow(seg, 50, 135, Helptext.miscText[14]); // None
+            // TODO: cube 收集動畫
+        }
+
+        Nortsong.frameCountMax = 6;
+        Fonthand.JE_outTextGlow(seg, 90, Config.twoPlayerMode ? 150 : 160, Helptext.miscText[4]);
+
+        if (!Params.constantPlay)
+            Keyboard.waitUntilGetInput();
+
+        Palette.fade_black(15);
+        Video.JE_clr256(Video.VGAScreen);
+    }
+
+    private static bool totalEnemyZero() => Tyrian2.totalEnemy == 0;
+    private static int totalEnemyOf() => Tyrian2.totalEnemy;
+    private static ushort enemyKilled => Tyrian2.enemyKilled;
+    private static ushort levelTimerCountdown => Tyrian2.levelTimerCountdown;
+    private static ushort editorLevel { get => Config.editorLevel; set => Config.editorLevel = value; }
+
     /// <summary>對應 mainint.c:JE_inGameDisplays —— 遊戲內 HUD（分數/特殊武器/超級炸彈）。街機 lives 待 lives 指標移植。</summary>
     public static void JE_inGameDisplays()
     {

@@ -277,7 +277,11 @@ internal static unsafe partial class Tyrian2
                 break;
         }
 
-        // 過關：載入下一關（對應 goto start_level）。mainLevel==0（章節結束）則回標題。
+        // 過關摘要畫面（玩家存活或 bonus 關；對應 tyrian2.c start_level 689）
+        if (Players.all_players_alive() || normalBonusLevelCurrent || bonusLevelCurrent)
+            Mainint.JE_endLevelAni();
+
+        // 載入下一關（對應 goto start_level）。mainLevel==0（章節結束）則回標題。
         Config.mainLevel = Config.nextLevel;
         if (Config.mainLevel != 0)
         {
