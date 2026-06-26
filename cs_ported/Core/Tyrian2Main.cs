@@ -125,6 +125,33 @@ internal static unsafe partial class Tyrian2
             if (player[0].y < 10) player[0].y = 10;
             if (player[0].y > 185) player[0].y = 185;
 
+            // === 簡化玩家射擊（對應 JE_playerMovement 4186-4204 的前/後武器發射）===
+            Mainint.button[0] = Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_FIRE]];
+            player[0].mouseX = (ushort)player[0].x;
+            player[0].mouseY = (ushort)player[0].y;
+
+            for (int temp = 0; temp < 2; temp++)
+            {
+                int item = player[0].items.weapon[temp].id;
+                if (item > 0)
+                {
+                    if (Config.shotRepeat[temp] > 0)
+                    {
+                        Config.shotRepeat[temp]--;
+                    }
+                    else if (Mainint.button[0])
+                    {
+                        int item_power = Config.galagaMode ? 0 : player[0].items.weapon[temp].power - 1;
+                        int item_mode = (temp == Players.REAR_WEAPON) ? (int)player[0].weapon_mode - 1 : 0;
+                        ushort wpNum = Episodes.weaponPort[item].op[item_mode * 11 + item_power];
+                        Shots.player_shot_create((ushort)item, (uint)temp, (ushort)player[0].x, (ushort)player[0].y, player[0].mouseX, player[0].mouseY, wpNum, 1);
+                    }
+                }
+            }
+
+            // 移動 + 繪製所有玩家子彈
+            Shots.simulate_player_shots();
+
             // 繪製玩家船艦（對應 JE_playerMovement 的 shipGr blit）
             Sprites.blit_sprite2x2(Video.VGAScreen, player[0].x - 5, player[0].y - 7, Varz.shipGrPtr, Varz.shipGr);
 

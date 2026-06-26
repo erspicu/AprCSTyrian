@@ -30,6 +30,9 @@ internal static unsafe partial class Mainint
 
     public static bool performSave;
 
+    /// <summary>mainint.c: button[4] — 開火 / 左火 / 右火 / 模式切換。</summary>
+    public static readonly bool[] button = new bool[4];
+
     /// <summary>對應 mainint.c:JE_operation。目前僅移植 load 路徑；存檔命名對話框(performSave) 待 in-game 選單。</summary>
     public static void JE_operation(byte slot)
     {
