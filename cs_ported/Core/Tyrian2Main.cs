@@ -194,8 +194,51 @@ internal static unsafe partial class Tyrian2
                 }
             }
 
-            // 移動 + 繪製所有玩家子彈
-            Shots.simulate_player_shots();
+            // === 玩家子彈：移動/繪製 + 碰撞敵人（簡化 collision；完整版含 boss bar/連動敵人/edlevel 傷害態）===
+            for (int z = 0; z < Shots.MAX_PWEAPON; z++)
+            {
+                if (Shots.shotAvail[z] == 0)
+                    continue;
+                if (!Shots.player_shot_move_and_draw(z, out _, out int sx, out int sy, out short dmg, out _, out _, out _, out _, out _))
+                    continue;
+
+                for (int b = 0; b < 100; b++)
+                {
+                    if (Varz.enemyAvail[b] != 0)
+                        continue; // 只打 armored 活動敵人
+
+                    int ax = Varz.enemy[b].ex + Varz.enemy[b].mapoffset;
+                    bool collided =
+                        (Varz.enemy[b].enemycycle == 0 && Math.Abs(ax - sx) < 25 && Math.Abs(Varz.enemy[b].ey - sy - 12) < 29) ||
+                        (Varz.enemy[b].enemycycle > 0 && Math.Abs(ax - sx) < 13 && Math.Abs(Varz.enemy[b].ey - sy - 6) < 15);
+                    if (!collided)
+                        continue;
+
+                    bool infiniteShot = false;
+                    if (dmg == 99) { dmg = 0; Varz.enemy[b].iced = 40; }
+                    else if (dmg >= 250) { dmg = (short)(dmg - 250); infiniteShot = true; }
+
+                    int armorleft = Varz.enemy[b].armorleft;
+                    if (armorleft != 255 && armorleft > dmg)
+                    {
+                        Varz.enemy[b].armorleft = (byte)(armorleft - dmg);
+                        Varz.soundQueue[5] = (byte)Sndmast.S_ENEMY_HIT;
+                        Varz.JE_setupExplosion(sx, sy, 0, 0, false, false);
+                    }
+                    else if (armorleft != 255)
+                    {
+                        // 敵人死亡：爆炸 + 計分 + 回收
+                        Players.player[0].cash += (uint)Math.Max(0, (int)Varz.enemy[b].evalue);
+                        Varz.JE_setupExplosionLarge(Varz.enemy[b].enemyground, Varz.enemy[b].explonum, ax, Varz.enemy[b].ey);
+                        Varz.soundQueue[4] = (byte)Sndmast.S_EXPLOSION_8;
+                        Varz.enemyAvail[b] = 1;
+                    }
+
+                    if (!infiniteShot)
+                        Shots.shotAvail[z] = 0; // 移除子彈
+                    break;
+                }
+            }
 
             // 繪製玩家船艦（對應 JE_playerMovement 的 shipGr blit）
             Sprites.blit_sprite2x2(Video.VGAScreen, player[0].x - 5, player[0].y - 7, Varz.shipGrPtr, Varz.shipGr);
