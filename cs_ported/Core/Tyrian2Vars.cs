@@ -29,5 +29,9 @@ internal static unsafe partial class Tyrian2
     public static readonly byte[] mapSection = new byte[5];
 
     public static ushort levelTimerCountdown;
+
+    public static bool endLevel, reallyEndLevel, playerEndLevel, readyToEndLevel, quitRequested;
+    public static ushort curLoc;
+    public static byte astralDuration;
 #pragma warning restore CS0649
 }

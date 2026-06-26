@@ -57,6 +57,9 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       +JE_helpBox/HBox)；`Menus` 文字占位（已驗證："Episode 1: Escape"/"Start New Game" 正確）
 - [x] **命令列參數**：`ArgParse`(arg_parse.c getopt 重實作)+`Params`(params.c JE_paramCheck)+`Xmas`(占位)；
       網路選項視為不支援；TyrianGame/Program 串接 argv
+- [x] **JE_main 骨架（進入關卡）**：`Tyrian2.JE_main`(tyrian2.c)：忠實關卡 setup(JE_loadMap+map位置+玩家+背景旗標) +
+      最小主迴圈(三層捲動背景)；TyrianGame 標題迴圈接 JE_main(opentyr main 流程)。實機驗證進入 ep1lv1 捲動無 crash
+      完整遊戲邏輯(事件系統/敵人 AI/玩家移動/射擊/碰撞/HUD)待續
 - [x] **背景繪製 backgrnd.c**：`Backgrnd`(draw_background_1/2/3 + blit_background_row/blend + JE_darkenBackground)
       flat-index 走訪 megaData.mainmap(C 的 byte** → nint[] 索引)；實機驗證 draw_background_1=56448/64000 非零像素
 - [x] **JE_loadMap 關卡載入**：`Tyrian2.JE_loadMap`(tyrian2.c)：episode 檔 ]X 命令解析(過場/設定/跳關/galaga/engage) +

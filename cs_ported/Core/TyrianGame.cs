@@ -71,11 +71,21 @@ public sealed class TyrianGame
                 // Quit/ESC/右鍵回 false → 結束。
                 Tyrian2.intro_logos(); // 開場 logo 動畫（對應 opentyr.c main 的 intro_logos）
 
-                Mainint.JE_initPlayerData();
-                while (Tyrian2.titleScreen())
+                // 對應 opentyr.c main 的標題迴圈：initPlayerData → titleScreen → JE_main。
+                while (true)
                 {
-                    // JE_main（遊戲主迴圈）尚未移植：暫時回到標題。
                     Mainint.JE_initPlayerData();
+                    if (!Tyrian2.titleScreen())
+                        break;
+
+                    if (Varz.loadDestruct)
+                        Varz.loadDestruct = false; // TODO: JE_destructGame（毀滅模式）
+                    else
+                    {
+                        Tyrian2.JE_main(); // 進入關卡（骨架：捲動背景）
+                        if (Config.trentWin)
+                            break;
+                    }
                 }
             }
             else
