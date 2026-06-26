@@ -79,6 +79,9 @@ internal static class Helptext
         }
     }
 
+    /// <summary>公開包裝，供 JE_loadMap 等讀取 episode 檔的加密 Pascal 字串。</summary>
+    public static string ReadEncryptedPascalString(Stream f, int size) => read_encrypted_pascal_string(f, size);
+
     private static string read_encrypted_pascal_string(Stream f, int size)
     {
         byte len = CFile.read_u8(f);

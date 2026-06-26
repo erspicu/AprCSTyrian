@@ -12,6 +12,7 @@ internal sealed unsafe class JE_MegaData
 
     public readonly int rows, cols, shapeCount;
     public readonly nint[] mainmap;          // [rows*cols] of byte* (null = 無 shape)
+    public readonly byte[] fill;             // [shapeCount] 每個 shape 是否全不透明（megaData2/3 用）
     public byte* shapesData;                 // 非託管：shapeCount * 672
 #pragma warning disable CS0649 // 由尚未移植的 JE_loadMap 指派
     public byte tempdat;
@@ -23,6 +24,7 @@ internal sealed unsafe class JE_MegaData
         this.cols = cols;
         this.shapeCount = shapeCount;
         mainmap = new nint[rows * cols];
+        fill = new byte[shapeCount];
     }
 
     public void Alloc()
