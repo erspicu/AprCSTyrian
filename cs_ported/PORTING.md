@@ -9,6 +9,10 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - SDL 繫結：`Sayers.SDL2.Core`（SDL2-CS 的 NuGet 包裝，內含原生 SDL2.dll）。
 
 ## 已完成
+- [x] **版控**：git 初始化 + 推送至 GitHub `erspicu/AprCSTyrian`（private）；`.gitignore` 排除
+      `Build`/`private`/`temp`/`bin`/`obj` 與 VS C# 慣例檔；`sources/` 以對照參考提交（移除巢狀 .git）
+- [x] **Phase A 基礎**：`CTypes`(JE_* 別名)、`CMem`(malloc/calloc/realloc/free + DEBUG leak 追蹤)、
+      `Opentyr`(常數/巨集/版本)、`MtRand`(mtrand.c 指標式 MT，非託管 state)
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`
 - [x] Core 型別：`Color`(8-bit RGB, `FromVga`) / `GameKey` / `VgaScreen`(320×200)
