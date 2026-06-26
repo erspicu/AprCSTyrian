@@ -180,7 +180,7 @@ internal static unsafe partial class Tyrian2
             {
                 if (Shots.shotAvail[z] == 0)
                     continue;
-                if (!Shots.player_shot_move_and_draw(z, out _, out int sx, out int sy, out short dmg, out _, out _, out _, out _, out _))
+                if (!Shots.player_shot_move_and_draw(z, out _, out int sx, out int sy, out short dmg, out byte blastFilter, out _, out _, out _, out _))
                     continue;
 
                 for (int b = 0; b < 100; b++)
@@ -198,6 +198,10 @@ internal static unsafe partial class Tyrian2
                     bool infiniteShot = false;
                     if (dmg == 99) { dmg = 0; Varz.enemy[b].iced = 40; }
                     else if (dmg >= 250) { dmg = (short)(dmg - 250); infiniteShot = true; }
+
+                    // 受擊閃白（對應 tyrian2.c 1518-1519）
+                    if (Varz.enemy[b].armorleft < 255 && Varz.enemy[b].enemyground)
+                        Varz.enemy[b].filter = blastFilter;
 
                     int armorleft = Varz.enemy[b].armorleft;
                     if (armorleft != 255 && armorleft > dmg)
