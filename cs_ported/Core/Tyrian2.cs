@@ -320,7 +320,65 @@ internal static unsafe partial class Tyrian2
 
     // === 子畫面 stub（待後續移植；目前回到標題） ===
     private static void setupMenu() { }
-    private static void JE_whoa() { }
+    /// <summary>對應 tyrian2.c:JE_whoa —— 輸入 'engage' 的螢幕暈染淡出特效（像素滲透）。</summary>
+    private static unsafe void JE_whoa()
+    {
+        byte* TempScreen1 = Video.game_screen.pixels;
+        byte* TempScreen2 = Video.VGAScreen2.pixels;
+        byte* seg = Video.VGAScreenSeg.pixels;
+
+        int pitch = Video.VGAScreenSeg.pitch;
+        int screenSize = Video.VGAScreenSeg.h * pitch;
+        int topBorder = pitch * 4;     /* Seems an arbitrary number of lines */
+        int bottomBorder = pitch * 7;
+
+        /* Clear the top and bottom borders. */
+        new Span<byte>(seg, topBorder).Clear();
+        new Span<byte>(seg + screenSize - bottomBorder, bottomBorder).Clear();
+
+        /* Copy our test subject to one temp buffer.  Blank the other. */
+        new Span<byte>(TempScreen1, screenSize).Clear();
+        Buffer.MemoryCopy(seg, TempScreen2, screenSize, screenSize);
+
+        for (int loops = 300; loops > 0; --loops)
+        {
+            Nortsong.setFrameCount(1);
+
+            /* 'whoa' effect with pixel bleeding magic. */
+            for (int i = screenSize - bottomBorder, j = topBorder / 2; i > 0; i--, j++)
+            {
+                int offset = j + i / 8192 - 4;
+                int color = (TempScreen2[offset] * 12 +
+                             TempScreen1[offset - pitch] +
+                             TempScreen1[offset - 1] +
+                             TempScreen1[offset + 1] +
+                             TempScreen1[offset + pitch]) / 16;
+
+                TempScreen1[j] = (byte)color;
+            }
+
+            /* Now copy that mess to the buffer. */
+            Buffer.MemoryCopy(TempScreen1 + topBorder, seg + topBorder, screenSize - topBorder, screenSize - bottomBorder);
+
+            Video.JE_showVGA();
+
+            Keyboard.waitUntilElapsed();
+
+            if ((Keyboard.keyboardGetInput(out KeyboardInput keyboardInput) &&
+                 keyboardInput.scancode != SdlKeys.SDL_SCANCODE_SCROLLLOCK) ||
+                Keyboard.mouseGetInput(InputFlags.INPUT_NO_MOTION, out _))
+            {
+                break;
+            }
+
+            /* Flip the buffer. */
+            byte* TempScreenSwap = TempScreen1;
+            TempScreen1 = TempScreen2;
+            TempScreen2 = TempScreenSwap;
+        }
+
+        Fonthand.levelWarningLines = 4;
+    }
     private static bool newSuperArcadeGame(int i)
     {
         Players.player[0].items.ship = Varz.SAShip[i];
