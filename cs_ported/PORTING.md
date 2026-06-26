@@ -34,8 +34,11 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       Shield/Ship/EnemyDat 結構 + weaponPort/weapons/ships/options/… 全域)、`Config`(最小占位 twoPlayerMode/galagaMode)
 - [x] **varz 函式（自足子集）**：const 資料表(SAWeapon/optionSelect/keyboardCombos/shipCombos…) +
       JE_setupExplosion/setupExplosionLarge/doSP/drawSP/portConfigs/wipeShieldArmorBars/drawOptions/drawOptionLevel
-- 註：config 序列化、varz.c 重度函式(specialComplete/doSpecialShot/getShipInfo/drawShield・Armor)、
-      episodes 資料載入、MegaData 地圖結構待 shots/weapons/audio 與資料載入移植
+- [x] **shots 武器邏輯**：`Shots`(shots.c)：`PlayerShotDataType` + `playerShotData`/`shotAvail` +
+      `simulate_player_shots`/`player_shot_set_direction`/`player_shot_move_and_draw`(out 參數)/`player_shot_create`
+      （補 config 全域 power/shotRepeat/shotMultiPos/background2、varz soundQueue/x/y）
+- 註：config 序列化、varz.c 重度函式(specialComplete/doSpecialShot/getShipInfo/drawShield・Armor，需 dBar3/button/filter)、
+      episodes 資料載入、MegaData 地圖結構待後續
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`
 - [x] Core 型別：`Color`(8-bit RGB, `FromVga`) / `GameKey` / `VgaScreen`(320×200)

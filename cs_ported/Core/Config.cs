@@ -11,4 +11,10 @@ internal static partial class Config
 {
     public static bool twoPlayerMode;
     public static bool galagaMode;
+
+    // config.c 全域（shots/武器邏輯所需；完整 config 移植時整併）
+    public static uint power, lastPower, powerAdd;
+    public static readonly byte[] shotRepeat = new byte[11];
+    public static readonly byte[] shotMultiPos = new byte[11];
+    public static bool background2;
 }

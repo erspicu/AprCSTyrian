@@ -125,5 +125,7 @@ internal static partial class Varz
     public static int b;
     public static ushort levelEnd;
     public static bool levelTimer;
+    public static ushort x, y;
+    public static readonly byte[] soundQueue = new byte[8]; // [0..7]
 #pragma warning restore CS0649
 }
