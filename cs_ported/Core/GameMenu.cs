@@ -73,6 +73,52 @@ internal static unsafe partial class GameMenu
         }
     }
 
+    // 星圖導航狀態
+    public static readonly ushort[] planetX = { 200, 150, 240, 300, 270, 280, 320, 260, 220, 150, 160, 210, 80, 240, 220, 180, 310, 330, 150, 240, 200 };
+    public static readonly ushort[] planetY = { 40, 90, 90, 80, 170, 30, 50, 130, 120, 150, 220, 200, 80, 50, 160, 10, 55, 55, 90, 90, 40 };
+#pragma warning disable CS0649 // 由 JE_itemScreen 星圖邏輯指派
+    public static byte planetAni, planetAniWait, currentDotNum, currentDotWait;
+    public static float navX, navY, newNavX, newNavY;
+    public static int tempNavX, tempNavY;
+    public static readonly byte[] planetDots = new byte[5];
+    public static readonly int[,] planetDotX = new int[5, 10];
+    public static readonly int[,] planetDotY = new int[5, 10];
+#pragma warning restore CS0649
+
+    /// <summary>對應 game_menu.c:JE_drawDots —— 畫星圖導航虛線點。</summary>
+    public static void JE_drawDots()
+    {
+        for (int x = 0; x < Tyrian2.mapPNum; x++)
+        {
+            for (int y = 0; y < planetDots[x]; y++)
+            {
+                int tempX = planetDotX[x, y] - tempNavX + 66 - 2;
+                int tempY = planetDotY[x, y] - tempNavY + 85 - 2;
+                if (tempX > 0 && tempX < 140 && tempY > 0 && tempY < 168)
+                    Sprites.blit_sprite(Video.VGAScreenSeg, tempX, tempY, (uint)Sprites.OPTION_SHAPES,
+                        (x == curSel[MENU_PLAY_NEXT_LEVEL] - 2 && y < currentDotNum) ? 30u : 29u);
+            }
+        }
+    }
+
+    /// <summary>對應 game_menu.c:JE_drawPlanet —— 畫一個星球。</summary>
+    public static void JE_drawPlanet(int planetNum)
+    {
+        int tempZ = Varz.PGR[planetNum] - 1;
+        int w = Sprites.sprite((uint)Sprites.PLANET_SHAPES, (uint)tempZ).width;
+        int hh = Sprites.sprite((uint)Sprites.PLANET_SHAPES, (uint)tempZ).height;
+        int tempX = planetX[planetNum] + 66 - tempNavX - w / 2;
+        int tempY = planetY[planetNum] + 85 - tempNavY - hh / 2;
+
+        if (tempX > -7 && tempX + w < 170 && tempY > 0 && tempY < 160)
+        {
+            if (Varz.PAni[planetNum] != 0)
+                tempZ += planetAni;
+            Sprites.blit_sprite_dark(Video.VGAScreenSeg, tempX + 3, tempY + 3, (uint)Sprites.PLANET_SHAPES, (uint)tempZ, false);
+            Sprites.blit_sprite(Video.VGAScreenSeg, tempX, tempY, (uint)Sprites.PLANET_SHAPES, (uint)tempZ);
+        }
+    }
+
     /// <summary>對應 game_menu.c:JE_scaleBitmap —— 將 src 縮放寫入 dst 的 (x1,y1)-(x2,y2) 矩形（最近鄰）。</summary>
     public static void JE_scaleBitmap(SDL_Surface dst, SDL_Surface src, int x1, int y1, int x2, int y2)
     {

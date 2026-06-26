@@ -97,6 +97,7 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - [x] **game_menu.c 逐步移植**：JE_drawItem + 選單狀態機(MENU enum/menuChoices/curSel/cube) + JE_drawMenuHeader/Choices + 經濟 helper(playeritem_map ref-別名/JE_getCost/weapon_upgrade_cost/JE_cashLeft/JE_drawScore)
 - [x] **game_menu.c 商店子選單**：`GameMenu.JE_genItemMenu`(建立升級子選單物品清單；驗證武器名 Pulse/Multi/Vulcan Cannon + DONE)
 - [x] **game_menu.c JE_scaleBitmap**(最近鄰縮放 leaf；ship specs/scaleInPicture 用)
+- [x] **game_menu.c 星圖導航繪製**：JE_drawDots/JE_drawPlanet + 星圖狀態(planetX/Y/planetDots/navX/tempNav/planetAni)
 - 註：config_file.c(opentyrian.cfg INI)、關卡地圖載入(megaData)、varz 其餘重度函式、
       主遊戲邏輯(mainint titleScreen/JE_main、tyrian2、game_menu、opentyr 進入點) 待後續
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
