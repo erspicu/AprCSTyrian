@@ -46,8 +46,287 @@ internal static unsafe partial class Mainint
     // 網路未移植（守則 8），這些請求旗標僅供 isNetworkGame（const false）分支引用。
     public static bool pauseRequest, skipLevelRequest, helpRequest, nortShipRequest;
 
-    /// <summary>對應 mainint.c:JE_highScoreCheck —— 高分檢查/輸入畫面。尚未移植，no-op 空殼。</summary>
-    public static void JE_highScoreCheck() { /* TODO: 待移植 */ }
+    /// <summary>對應 mainint.c:JE_sort —— 通用三項冒泡排序輔助（JE_sortHighScores 用），以 Varz.temp 為基底。</summary>
+    public static void JE_sort()
+    {
+        for (byte a = 0; a < 2; a++)
+        {
+            for (byte b = (byte)(a + 1); b < 3; b++)
+            {
+                if (Config.saveFiles[Varz.temp + a].highScore1 < Config.saveFiles[Varz.temp + b].highScore1)
+                {
+                    var sa = Config.saveFiles[Varz.temp + a];
+                    var sb = Config.saveFiles[Varz.temp + b];
+
+                    int tempLI = sa.highScore1;
+                    sa.highScore1 = sb.highScore1;
+                    sb.highScore1 = tempLI;
+
+                    byte[] tempStr = new byte[30];
+                    Array.Copy(sa.highScoreName, tempStr, 30);
+                    Array.Copy(sb.highScoreName, sa.highScoreName, 30);
+                    Array.Copy(tempStr, sb.highScoreName, 30);
+
+                    byte tempByte = sa.highScoreDiff;
+                    sa.highScoreDiff = sb.highScoreDiff;
+                    sb.highScoreDiff = tempByte;
+                }
+            }
+        }
+    }
+
+    /// <summary>對應 mainint.c:JE_sortHighScores —— 對全部 6 段（每段 3 項）高分榜排序。</summary>
+    public static void JE_sortHighScores()
+    {
+        Varz.temp = 0;
+        for (byte x = 0; x < 6; x++)
+        {
+            JE_sort();
+            Varz.temp += 3;
+        }
+    }
+
+    /// <summary>對應 mainint.c:JE_highScoreCheck —— 達標時顯示榜、判斷進榜、姓名輸入並寫入排序。</summary>
+    public static void JE_highScoreCheck()
+    {
+        if (Sprites.shopSpriteSheet.data == null)
+            Sprites.JE_loadCompShapes(ref Sprites.shopSpriteSheet, '1');  // need mouse pointer sprite
+
+        int temp_score;
+
+        for (int temp_p = 0; temp_p < (Config.twoPlayerMode ? 2 : 1); ++temp_p)
+        {
+            JE_sortHighScores();
+
+            int p = temp_p;
+
+            if (Config.twoPlayerMode)
+            {
+                // ask for the highest scorer first
+                if (Players.player[0].cash < Players.player[1].cash)
+                    p = (temp_p == 0) ? 1 : 0;
+
+                temp_score = (int)((p == 0) ? Players.player[0].cash : Players.player[1].cash);
+            }
+            else
+            {
+                // single player highscore includes cost of upgrades
+                // 註：JE_getValue 尚未移植，沿用 Tyrian2Map.JE_totalScore 的近似（僅 cash）。
+                temp_score = (int)Players.player[0].cash;
+            }
+
+            int slot;
+            int first_slot = (Episodes.initial_episode_num - 1) * 6 + (Config.twoPlayerMode ? 3 : 0),
+                slot_limit = first_slot + 3;
+
+            for (slot = first_slot; slot < slot_limit; ++slot)
+            {
+                if (temp_score > Config.saveFiles[slot].highScore1)
+                    break;
+            }
+
+            // did you get a high score?
+            if (slot < slot_limit)
+            {
+                // shift down old scores
+                for (int i = slot_limit - 1; i > slot; --i)
+                {
+                    Config.saveFiles[i].highScore1 = Config.saveFiles[i - 1].highScore1;
+                    Array.Copy(Config.saveFiles[i - 1].highScoreName, Config.saveFiles[i].highScoreName, 30);
+                }
+
+                Video.JE_clr256(Video.VGAScreen);
+                Video.JE_showVGA();
+                Array.Copy(Palette.palettes[0], Palette.colors, 256);
+
+                Loudness.play_song(33);
+
+                {
+                    /* Enter Thy name */
+
+                    byte flash = 8 * 16 + 10;
+                    bool fadein = true;
+                    bool quit = false, cancel = false;
+                    byte[] stemp = new byte[30];
+                    string tempstr;
+                    string buffer;
+
+                    // strcpy(stemp, "                             ");  // 29 spaces + NUL
+                    for (int i = 0; i < 29; ++i) stemp[i] = (byte)' ';
+                    stemp[29] = 0;
+                    Varz.temp = 0;
+
+                    Vga256d.JE_barShade(Video.VGAScreen, 65, 55, 255, 155);
+
+                    // SDL_StartTextInput(): C# 端文字輸入由事件迴圈處理，無需顯式呼叫。
+
+                    do
+                    {
+                        Nortsong.setFrameCount(1);
+
+                        Fonthand.JE_dString(Video.VGAScreen, Fonthand.JE_fontCenter(Helptext.miscText[51], (uint)Sprites.FONT_SHAPES), 3, Helptext.miscText[51], (uint)Sprites.FONT_SHAPES);
+
+                        Varz.temp3 = (byte)(Config.twoPlayerMode ? 58 + p : 53);
+
+                        Fonthand.JE_dString(Video.VGAScreen, Fonthand.JE_fontCenter(Helptext.miscText[Varz.temp3 - 1], (uint)Sprites.SMALL_FONT_SHAPES), 30, Helptext.miscText[Varz.temp3 - 1], (uint)Sprites.SMALL_FONT_SHAPES);
+
+                        Sprites.blit_sprite(Video.VGAScreenSeg, 50, 50, (uint)Sprites.OPTION_SHAPES, 35);  // message box
+
+                        if (Config.twoPlayerMode)
+                        {
+                            buffer = $"{Helptext.miscText[48 + p]} {Helptext.miscText[53]}";
+                            Fonthand.JE_textShade(Video.VGAScreen, 60, 55, buffer, 11, 4, Fonthand.FULL_SHADE);
+                        }
+                        else
+                        {
+                            Fonthand.JE_textShade(Video.VGAScreen, 60, 55, Helptext.miscText[53], 11, 4, Fonthand.FULL_SHADE);
+                        }
+
+                        buffer = $"{Helptext.miscText[37]} {temp_score}";
+                        Fonthand.JE_textShade(Video.VGAScreen, 70, 70, buffer, 11, 4, Fonthand.FULL_SHADE);
+
+                        // TODO: Rework this so that cursor blink timing is independent of input.
+                        while (true)
+                        {
+                            flash = (byte)((flash == 8 * 16 + 10) ? 8 * 16 + 2 : 8 * 16 + 10);
+                            Varz.temp3 = (byte)((Varz.temp3 == 6) ? 2 : 6);
+
+                            // strncpy(tempstr, stemp, temp); tempstr[temp] = '\0';
+                            {
+                                var c = new char[Varz.temp];
+                                for (int i = 0; i < Varz.temp; ++i) c[i] = (char)stemp[i];
+                                tempstr = new string(c);
+                            }
+                            Fonthand.JE_outText(Video.VGAScreen, 65, 89, tempstr, 8, 3);
+                            Varz.tempW = (ushort)(65 + Fonthand.JE_textWidth(tempstr, Sprites.TINY_FONT));
+                            Vga256d.JE_barShade(Video.VGAScreen, Varz.tempW + 2, 90, Varz.tempW + 6, 95);
+                            Vga256d.fill_rectangle_xy(Video.VGAScreen, Varz.tempW + 1, 89, Varz.tempW + 5, 94, flash);
+
+                            for (int i = 0; i < 14; i++)
+                            {
+                                Mouse.JE_mouseStart();
+                                Video.JE_showVGA();
+                                if (fadein)
+                                {
+                                    Palette.fade_palette(Palette.colors, 15, 0, 255);
+                                    fadein = false;
+                                }
+                                Mouse.JE_mouseReplace();
+
+                                Keyboard.waitUntilElapsed();
+
+                                if (Keyboard.hasInput(InputFlags.INPUT_NO_MOTION))
+                                    break;
+
+                                Nortsong.setFrameCount(1);
+                            }
+
+                            if (Keyboard.hasInput(InputFlags.INPUT_NO_MOTION))
+                                break;
+                        }
+
+                        if (!Loudness.playing)
+                            Loudness.play_song(31);
+
+                        if (Keyboard.mouseGetInput(InputFlags.INPUT_NO_MOTION, out MouseInput mouseInput))
+                        {
+                            if (mouseInput.x > 56 && mouseInput.x < 142 &&
+                                mouseInput.y > 123 && mouseInput.y < 149)
+                            {
+                                quit = true;
+                            }
+                            else if (mouseInput.x > 151 && mouseInput.x < 237 &&
+                                     mouseInput.y > 123 && mouseInput.y < 149)
+                            {
+                                quit = true;
+                                cancel = true;
+                            }
+                        }
+                        else if (Keyboard.keyboardGetInput(out KeyboardInput keyboardInput))
+                        {
+                            switch (keyboardInput.scancode)
+                            {
+                                case SdlKeys.SDL_SCANCODE_BACKSPACE:
+                                case SdlKeys.SDL_SCANCODE_DELETE:
+                                    if (Varz.temp > 0)
+                                    {
+                                        Varz.temp -= 1;
+                                        stemp[Varz.temp] = (byte)' ';
+                                    }
+                                    break;
+                                case SdlKeys.SDL_SCANCODE_ESCAPE:
+                                    quit = true;
+                                    cancel = true;
+                                    break;
+                                case SdlKeys.SDL_SCANCODE_RETURN:
+                                    quit = true;
+                                    break;
+                                default:
+                                    break;
+                            }
+
+                            byte ch = keyboardInput.ch;
+                            if ((ch == ' ' || Fonthand.fontMap[ch] != -1) &&
+                                Varz.temp < 28)
+                            {
+                                stemp[Varz.temp] = ch;
+                                Varz.temp += 1;
+                            }
+                        }
+                    } while (!quit);
+
+                    // SDL_StopTextInput(): 同上，C# 端為無操作。
+
+                    if (!cancel)
+                    {
+                        Config.saveFiles[slot].highScore1 = temp_score;
+                        Array.Copy(stemp, Config.saveFiles[slot].highScoreName, 30);
+                        Config.saveFiles[slot].highScoreDiff = (byte)Config.difficultyLevel;
+                    }
+
+                    Palette.fade_black(15);
+                    Picload.JE_loadPic(Video.VGAScreen, 2, false);
+
+                    Fonthand.JE_dString(Video.VGAScreen, Fonthand.JE_fontCenter(Helptext.miscText[50], (uint)Sprites.FONT_SHAPES), 10, Helptext.miscText[50], (uint)Sprites.FONT_SHAPES);
+                    Fonthand.JE_dString(Video.VGAScreen, Fonthand.JE_fontCenter(Menus.episode_name[Episodes.episodeNum], (uint)Sprites.SMALL_FONT_SHAPES), 35, Menus.episode_name[Episodes.episodeNum], (uint)Sprites.SMALL_FONT_SHAPES);
+
+                    for (int i = first_slot; i < slot_limit; ++i)
+                    {
+                        if (i != slot)
+                        {
+                            buffer = $"~#{i - first_slot + 1}:~  {Config.saveFiles[i].highScore1}";
+                            Fonthand.JE_textShade(Video.VGAScreen, 20, ((i - first_slot + 1) * 12) + 65, buffer, 15, 0, Fonthand.FULL_SHADE);
+                            Fonthand.JE_textShade(Video.VGAScreen, 150, ((i - first_slot + 1) * 12) + 65, CStr(Config.saveFiles[i].highScoreName), 15, 2, Fonthand.FULL_SHADE);
+                        }
+                    }
+
+                    Video.JE_showVGA();
+
+                    Palette.fade_palette(Palette.colors, 15, 0, 255);
+
+                    buffer = $"~#{slot - first_slot + 1}:~  {Config.saveFiles[slot].highScore1}";
+
+                    Nortsong.frameCountMax = 6;
+                    Fonthand.textGlowFont = (byte)Sprites.TINY_FONT;
+
+                    Fonthand.textGlowBrightness = 10;
+                    Fonthand.JE_outTextGlow(Video.VGAScreenSeg, 20, (slot - first_slot + 1) * 12 + 65, buffer);
+                    Fonthand.textGlowBrightness = 10;
+                    Fonthand.JE_outTextGlow(Video.VGAScreenSeg, 150, (slot - first_slot + 1) * 12 + 65, CStr(Config.saveFiles[slot].highScoreName));
+                    Fonthand.textGlowBrightness = 10;
+                    Fonthand.JE_outTextGlow(Video.VGAScreenSeg, Fonthand.JE_fontCenter(Helptext.miscText[4], Sprites.TINY_FONT), 180, Helptext.miscText[4]);
+
+                    Video.JE_showVGA();
+
+                    if (Nortsong.frameCountMax != 0)
+                        Keyboard.waitUntilGetInput();
+
+                    Palette.fade_black(15);
+                }
+
+            }
+        }
+    }
 
     /// <summary>對應 mainint.c:JE_playCredits —— 過關後跑製作名單。尚未移植，no-op 空殼。</summary>
     public static void JE_playCredits() { /* TODO: 待移植 */ }
