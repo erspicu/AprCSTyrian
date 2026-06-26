@@ -59,8 +59,9 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       網路選項視為不支援；TyrianGame/Program 串接 argv
 - [x] **護盾/裝甲 bar**：`Nortvars`(nortvars.c：JE_dBar3/JE_barDrawShadow) +
       `Varz.JE_drawShield`/`JE_drawArmor`(解先前延後)
-- 註：config_file.c(opentyrian.cfg INI)、關卡地圖載入(megaData)、varz 其餘重度函式(specialComplete/doSpecialShot)、
-      主遊戲邏輯(opentyr/mainint/tyrian2/game_menu) 待後續
+- [x] **mainint 起手**：`Mainint.JE_initPlayerData`(新遊戲玩家裝備/資料初始化)
+- 註：config_file.c(opentyrian.cfg INI)、關卡地圖載入(megaData)、varz 其餘重度函式、
+      主遊戲邏輯(mainint titleScreen/JE_main、tyrian2、game_menu、opentyr 進入點) 待後續
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`
 - [x] Core 型別：`Color`(8-bit RGB, `FromVga`) / `GameKey` / `VgaScreen`(320×200)
