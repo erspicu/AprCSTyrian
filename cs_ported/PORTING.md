@@ -21,6 +21,9 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       `Palette`(palette.c：JE_loadPals/set_palette/fade*) +
       `Nortsong`(計時) + `Keyboard`/`Mouse`(最小橋接)
 - [x] **可視里程碑**：ported 管線實機跑通（VGAScreen 非託管 → JE_showVGA → IVideoBackend，無 crash）
+- [x] **圖片載入**：`Pcxload`(pcxload.c) + `Picload`(picload.c) + `Pcxmast`(pcxmast.c)
+- [x] **真實資料里程碑**：Tyrian 2.1 資料已置於 `Build/data`（gitignore），實機輪播真實 `tyrian.pic` 圖片無 crash
+- 註：`config_file.c`/`config.c` **刻意延後**至 varz 遊戲全域結構就緒後（見 Plan 第 7 項）
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`
 - [x] Core 型別：`Color`(8-bit RGB, `FromVga`) / `GameKey` / `VgaScreen`(320×200)

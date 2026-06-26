@@ -31,27 +31,40 @@ public sealed class TyrianGame
         {
             bool dataFound = CFile.data_dir().Length != 0;
             if (dataFound)
-            {
-                // 載入真正的 Tyrian 調色盤並套用第一組。
                 Palette.JE_loadPals();
-                Palette.set_palette(Palette.palettes[0], 0, 255);
-            }
             else
-            {
-                // 無資料檔：以合成調色盤示意，仍走 set_palette → 上傳管線。
                 BuildSyntheticPalette();
-                Palette.set_palette(Palette.colors, 0, 255);
-            }
 
             var input = _platform.Input;
             uint frame = 0;
+            int picNumber = 1;             // 1..PCX_NUM
+            const int picHoldFrames = 140; // 每張圖停留幀數
+
+            if (dataFound)
+                Picload.JE_loadPic(Video.VGAScreen, (byte)picNumber, true); // 載入真實 tyrian.pic 圖
+            else
+                Palette.set_palette(Palette.colors, 0, 255);
+
             while (true)
             {
                 input.Poll();
                 if (input.QuitRequested || input.IsKeyDown(GameKey.Escape))
                     break;
 
-                RenderTestPattern(frame);
+                if (dataFound)
+                {
+                    // 每隔一段時間切換到下一張真實圖片，驗證 picload + 調色盤。
+                    if (frame != 0 && frame % picHoldFrames == 0)
+                    {
+                        picNumber = picNumber % Pcxmast.PCX_NUM + 1;
+                        Picload.JE_loadPic(Video.VGAScreen, (byte)picNumber, true);
+                    }
+                }
+                else
+                {
+                    RenderTestPattern(frame);
+                }
+
                 Video.JE_showVGA();
 
                 frame++;
