@@ -57,6 +57,7 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       +JE_helpBox/HBox)；`Menus` 文字占位（已驗證："Episode 1: Escape"/"Start New Game" 正確）
 - [x] **命令列參數**：`ArgParse`(arg_parse.c getopt 重實作)+`Params`(params.c JE_paramCheck)+`Xmas`(占位)；
       網路選項視為不支援；TyrianGame/Program 串接 argv
+- [x] **後繼敵人(enemydie)生成**：JE_newEnemy；死亡時生成 enemydie 後繼(多階段敵人)+ esize-based 爆炸/音效 + 計分 cubeMax/cash；驗證 type91→type502
 - [x] **特殊砲塔型 251-255**：Suck-O-Magnet(吸引)/ShortRange Magnet(推±2)/Magneto RePulse(排斥)/Savara DualMissile
 - [x] 敵人**受擊閃白**：命中時 enemy.filter=blast_filter，下一幀 blit_enemy 變色繪製
 - [x] **JE_updateEnemies(敵人移動/繪製核心)**：homing + 動畫 + size 多格(2x2)繪製 + 立方加速(curved) + 彈跳(xmin/maxbounce) + score item 邊界 + tempBackMove + 砲塔發射; blit_enemy(含 filter)

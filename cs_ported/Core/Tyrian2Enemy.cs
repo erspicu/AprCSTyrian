@@ -233,6 +233,20 @@ internal static unsafe partial class Tyrian2
         Varz.enemy[en].fixedmovey = eventRec[eventLoc - 1].eventdat6;
     }
 
+    /// <summary>對應 JE_newEnemy：在 [enemyOffset, +25) 找空槽生成敵人，回傳 slot+1（0=無空槽）。</summary>
+    public static int JE_newEnemy(int enemyOffset, ushort eDatI, short uniqueShapeTableI)
+    {
+        for (int i = enemyOffset; i < enemyOffset + 25; ++i)
+        {
+            if (Varz.enemyAvail[i] == 1)
+            {
+                Varz.enemyAvail[i] = (byte)JE_makeEnemy(i, eDatI, uniqueShapeTableI);
+                return i + 1;
+            }
+        }
+        return 0;
+    }
+
     public static void JE_eventJump(ushort jump)
     {
         if (jump == 65535)
