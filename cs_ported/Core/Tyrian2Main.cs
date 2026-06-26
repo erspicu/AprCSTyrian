@@ -86,6 +86,8 @@ internal static unsafe partial class Tyrian2
         Backgrnd.backMove3 = 3;
         Config.starActive = true;
         Backgrnd.initialize_starfield();
+        Config.power = 0; // 能源（對應 tyrian2.c 804）；每幀 += powerAdd 回充，射擊耗用
+        Varz.firstGameOver = true; // 對應 tyrian2.c 829；開啟音效佇列播放
         levelEnemyFrequency = 96;
         Config.cubeMax = 0;
         quitRequested = false;
@@ -245,6 +247,32 @@ internal static unsafe partial class Tyrian2
 
             // === 爆炸更新/繪製 ===
             Tyrian2.JE_drawExplosions();
+
+            // === 音效佇列播放（對應 tyrian2.c 2048-2068 The Sound Routine）===
+            if (Varz.firstGameOver)
+            {
+                for (int sc = 0; sc < Varz.soundQueue.Length; sc++)
+                {
+                    int snd = Varz.soundQueue[sc];
+                    if (snd != Sndmast.S_NONE)
+                    {
+                        int vol = (sc == 3) ? Nortsong.fxPlayVol
+                                : (snd == 15) ? Nortsong.fxPlayVol / 4
+                                : Nortsong.fxPlayVol / 2;
+                        Loudness.multiSamplePlay(Nortsong.soundSamples[snd - 1], Nortsong.soundSampleCount[snd - 1], (byte)sc, (byte)vol);
+                        Varz.soundQueue[sc] = Sndmast.S_NONE;
+                    }
+                }
+            }
+
+            // === 能源回充（對應 tyrian2.c 1219-1228）===
+            if (Config.twoPlayerMode || Config.onePlayerAction)
+                Config.power = 900;
+            else
+            {
+                Config.power += Config.powerAdd;
+                if (Config.power > 900) Config.power = 900;
+            }
 
             // === boss 血條 + HUD ===
             Tyrian2.draw_boss_bar();
