@@ -13,18 +13,26 @@ public sealed class TyrianGame
     private readonly IGamePlatform _platform;
     private readonly string _dataDir;
     private readonly string _userDir;
+    private readonly string[] _args;
 
-    public TyrianGame(IGamePlatform platform, string dataDir, string userDir)
+    public TyrianGame(IGamePlatform platform, string dataDir, string userDir, string[]? args = null)
     {
         _platform = platform;
         _dataDir = dataDir;
         _userDir = userDir;
+        _args = args ?? Array.Empty<string>();
     }
 
     /// <summary>執行主迴圈，直到使用者要求離開。</summary>
     public unsafe void Run()
     {
         Globals.Init(_platform, _dataDir, _userDir);
+
+        // 命令列參數（-s/-j/-x/-t/--data 等；對應 opentyr.c 的 JE_paramCheck）。
+        string[] argv = new string[_args.Length + 1];
+        argv[0] = "AprCSTyrian";
+        Array.Copy(_args, 0, argv, 1, _args.Length);
+        Params.JE_paramCheck(argv.Length, argv);
 
         // 載入設定 (tyrian.cfg) 與存檔/高分 (tyrian.sav)；缺檔則用預設。
         Config.loadConfiguration();

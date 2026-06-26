@@ -127,5 +127,6 @@ internal static partial class Varz
     public static bool levelTimer;
     public static ushort x, y;
     public static readonly byte[] soundQueue = new byte[8]; // [0..7]
+    public static bool play_demo, record_demo, stopped_demo;
 #pragma warning restore CS0649
 }

@@ -13,9 +13,9 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
-        // 資料/使用者目錄：可由參數覆寫，預設放在執行檔旁。
+        // 資料/使用者目錄：資料目錄可用 -t/--data 覆寫（由 JE_paramCheck 處理），預設放在執行檔旁。
         string baseDir = AppContext.BaseDirectory;
-        string dataRoot = args.Length > 0 ? args[0] : Path.Combine(baseDir, "data");
+        string dataRoot = Path.Combine(baseDir, "data");
         string userRoot = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "AprCSTyrian");
@@ -28,7 +28,7 @@ internal static class Program
                 dataRoot: dataRoot,
                 userRoot: userRoot);
 
-            var game = new TyrianGame(platform, dataRoot, userRoot);
+            var game = new TyrianGame(platform, dataRoot, userRoot, args);
             game.Run();
             return 0;
         }

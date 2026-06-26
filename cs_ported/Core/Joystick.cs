@@ -6,6 +6,8 @@ namespace AprCSTyrian.Core;
 /// </summary>
 internal static class Joystick
 {
+    public static bool ignore_joystick;
+
     public static void init_joysticks() { }
     public static void deinit_joysticks() { }
     public static void push_joysticks_as_keyboard() { }
