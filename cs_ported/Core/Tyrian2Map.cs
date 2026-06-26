@@ -5,8 +5,8 @@ namespace AprCSTyrian.Core;
 /// <summary>
 /// 移植 sources/src/tyrian2.c 的 JE_loadMap —— 關卡載入。
 /// Part 1：解析 episode 檔的 ]X 命令（過場/設定/跳關）。Part 2：讀 LEVELS.DAT/shapes?.dat → megaData。
-/// 未移植的重型子函式（JE_itemScreen 商店、JE_nextEpisode、JE_displayText）暫 stub，
-/// 但仍忠實讀取其消耗的檔案資料以維持檔案位置正確；過場的平移/滑動動畫先簡化為直接載圖。
+/// 子函式 JE_itemScreen 商店 / JE_nextEpisode / JE_displayText 皆已忠實移植；
+/// ]U/]V/]R 過場平移/滑動動畫已忠實移植（pic_buffer 逐列合成）。
 /// </summary>
 internal static unsafe partial class Tyrian2
 {
@@ -56,6 +56,9 @@ internal static unsafe partial class Tyrian2
         for (int i = 0; i < n; ++i) dst[i] = (byte)src[i];
         dst[n] = 0;
     }
+
+    // 過場進場動畫用緩衝（對應 tyrian2.c 全域 pic_buffer[320*200]）。
+    private static readonly byte[] pic_buffer = new byte[320 * 200];
 
     // === 待移植的重型子函式（暫 stub） ===
     // JE_itemScreen 商店主迴圈已移植 → GameMenu.JE_itemScreen()（'I' 命令直接呼叫）
@@ -453,16 +456,108 @@ internal static unsafe partial class Tyrian2
                                 }
                                 break;
 
-                            case 'U':  // Pan up to picture.（簡化：直接載圖）
+                            case 'U':  // Pan up to picture.
+                                if (!Params.constantPlay)
+                                {
+                                    int segSize = Video.VGAScreen2.pitch * Video.VGAScreen2.h;
+                                    Buffer.MemoryCopy(Video.VGAScreen.pixels, Video.VGAScreen2.pixels, segSize, segSize);
+
+                                    int tempX = Atoi(s, 3);
+                                    Picload.JE_loadPic(Video.VGAScreen, (byte)tempX, false);
+                                    fixed (byte* picb = pic_buffer)
+                                    {
+                                        int pitch = Video.VGAScreen.pitch;
+                                        Buffer.MemoryCopy(Video.VGAScreen.pixels, picb, 320 * 200, 320 * 200);
+
+                                        for (int z = 0; z <= 199; z++)
+                                        {
+                                            if (Keyboard.ESCPressed) break;
+                                            byte* vga = Video.VGAScreen.pixels;
+                                            byte* vga2 = Video.VGAScreen2.pixels;
+                                            byte* pic = picb + (199 - z) * 320;
+                                            Nortsong.setFrameCount(1);
+                                            for (int y = 0; y <= 199; y++)
+                                            {
+                                                if (y <= z) { Buffer.MemoryCopy(pic, vga, 320, 320); pic += 320; }
+                                                else { Buffer.MemoryCopy(vga2, vga, pitch, pitch); vga2 += pitch; }
+                                                vga += pitch;
+                                            }
+                                            Video.JE_showVGA();
+                                            if (Keyboard.waitUntilGetInputOrElapsed()) break;
+                                        }
+                                        Buffer.MemoryCopy(picb, Video.VGAScreen.pixels, 320 * 200, 320 * 200);
+                                    }
+                                }
+                                break;
+
                             case 'V':  // Slide picture up.
+                                if (!Params.constantPlay)
+                                {
+                                    int segSize = Video.VGAScreen2.pitch * Video.VGAScreen2.h;
+                                    Buffer.MemoryCopy(Video.VGAScreen.pixels, Video.VGAScreen2.pixels, segSize, segSize);
+
+                                    int tempX = Atoi(s, 3);
+                                    Picload.JE_loadPic(Video.VGAScreen, (byte)tempX, false);
+                                    fixed (byte* picb = pic_buffer)
+                                    {
+                                        int pitch = Video.VGAScreen.pitch;
+                                        Buffer.MemoryCopy(Video.VGAScreen.pixels, picb, 320 * 200, 320 * 200);
+
+                                        for (int z = 0; z <= 199; z++)
+                                        {
+                                            if (Keyboard.ESCPressed) break;
+                                            byte* vga = Video.VGAScreen.pixels;
+                                            byte* vga2 = Video.VGAScreen2.pixels;
+                                            byte* pic = picb;
+                                            Nortsong.setFrameCount(1);
+                                            for (int y = 0; y < 199; y++)
+                                            {
+                                                if (y <= 199 - z) { Buffer.MemoryCopy(vga2, vga, pitch, pitch); vga2 += pitch; }
+                                                else { Buffer.MemoryCopy(pic, vga, 320, 320); pic += 320; }
+                                                vga += pitch;
+                                            }
+                                            Video.JE_showVGA();
+                                            if (Keyboard.waitUntilGetInputOrElapsed()) break;
+                                        }
+                                        Buffer.MemoryCopy(picb, Video.VGAScreen.pixels, 320 * 200, 320 * 200);
+                                    }
+                                }
+                                break;
+
                             case 'R':  // Pan right to picture.
                                 if (!Params.constantPlay)
                                 {
+                                    int segSize = Video.VGAScreen2.pitch * Video.VGAScreen2.h;
+                                    Buffer.MemoryCopy(Video.VGAScreen.pixels, Video.VGAScreen2.pixels, segSize, segSize);
+
                                     int tempX = Atoi(s, 3);
                                     Picload.JE_loadPic(Video.VGAScreen, (byte)tempX, false);
-                                    Video.JE_showVGA();
-                                    Palette.fade_palette(Palette.colors, 10, 0, 255);
-                                    // TODO: 平移/滑動進場動畫
+                                    fixed (byte* picb = pic_buffer)
+                                    {
+                                        int pitch = Video.VGAScreen.pitch;
+                                        Buffer.MemoryCopy(Video.VGAScreen.pixels, picb, 320 * 200, 320 * 200);
+
+                                        for (int z = 0; z <= 318; z++)
+                                        {
+                                            if (Keyboard.ESCPressed) break;
+                                            byte* vga = Video.VGAScreen.pixels;
+                                            byte* vga2 = Video.VGAScreen2.pixels;
+                                            byte* pic = picb;
+                                            Nortsong.setFrameCount(1);
+                                            for (int y = 0; y < 200; y++)
+                                            {
+                                                Buffer.MemoryCopy(vga2 + z, vga, 319 - z, 319 - z);
+                                                vga += 320 - z;
+                                                vga2 += pitch;
+                                                Buffer.MemoryCopy(pic, vga, z + 1, z + 1);
+                                                vga += z;
+                                                pic += 320;
+                                            }
+                                            Video.JE_showVGA();
+                                            if (Keyboard.waitUntilGetInputOrElapsed()) break;
+                                        }
+                                        Buffer.MemoryCopy(picb, Video.VGAScreen.pixels, 320 * 200, 320 * 200);
+                                    }
                                 }
                                 break;
 
@@ -485,22 +580,33 @@ internal static unsafe partial class Tyrian2
                                 Video.JE_showVGA();
                                 break;
 
-                            case 'W':  // Show text.（簡化：讀取文字後 stub 顯示）
-                                if (!Params.constantPlay && !Keyboard.ESCPressed)
+                            case 'W':  // Show text, optionally with warning flashers and sirens.
+                                if (!Params.constantPlay)
                                 {
-                                    Fonthand.levelWarningLines = 0;
-                                    Nortsong.frameCountMax = (ushort)(Atoi(s, 4) % 10);
-                                    string sw;
-                                    do
+                                    if (!Keyboard.ESCPressed)
                                     {
-                                        sw = Helptext.ReadEncryptedPascalString(ep_f, 256);
-                                        if (Ch(sw, 0) != '#')
+                                        Fonthand.warningCol = 14 * 16 + 5;
+                                        Fonthand.warningColChange = 1;
+                                        Fonthand.warningSoundDelay = 0;
+                                        Fonthand.levelWarningDisplay = (Ch(s, 2) == 'y');
+                                        Fonthand.levelWarningLines = 0;
+                                        Nortsong.frameCountMax = (ushort)Atoi(s, 4);
+                                        Nortsong.setFrameCount2(6);
+                                        Fonthand.warningRed = (Nortsong.frameCountMax / 10) != 0;
+                                        Nortsong.frameCountMax = (ushort)(Nortsong.frameCountMax % 10);
+
+                                        string sw;
+                                        do
                                         {
-                                            CopyToBytes(Fonthand.levelWarningText[Fonthand.levelWarningLines], sw);
-                                            Fonthand.levelWarningLines++;
-                                        }
-                                    } while (Ch(sw, 0) != '#');
-                                    JE_displayText();
+                                            sw = Helptext.ReadEncryptedPascalString(ep_f, 256);
+                                            if (Ch(sw, 0) != '#')
+                                            {
+                                                CopyToBytes(Fonthand.levelWarningText[Fonthand.levelWarningLines], sw);
+                                                Fonthand.levelWarningLines++;
+                                            }
+                                        } while (Ch(sw, 0) != '#');
+                                        JE_displayText();
+                                    }
                                 }
                                 break;
 

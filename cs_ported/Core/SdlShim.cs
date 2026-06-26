@@ -32,7 +32,9 @@ internal sealed unsafe class SDL_Surface
     public static SDL_Surface Create(int w, int h)
     {
         var s = new SDL_Surface { w = w, h = h, pitch = w, _ownsPixels = true };
-        s.pixels = (byte*)CMem.calloc((nuint)(w * h), sizeof(byte));
+        // 多配一列 slack：忠實移植 tyrian2.c ]R 過場動畫末列有 +1 byte 越界寫入
+        // （原版靠 SDL malloc 的寬鬆配置容忍），此 slack 讓該越界落在無害區。
+        s.pixels = (byte*)CMem.calloc((nuint)(w * h + w), sizeof(byte));
         return s;
     }
 
