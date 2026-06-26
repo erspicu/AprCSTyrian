@@ -1,4 +1,5 @@
 using AprCSTyrian.Core.Ports;
+using ScalexFilter;
 using SDL2;
 
 namespace AprCSTyrian.App.Sdl;
@@ -13,8 +14,12 @@ internal sealed class SdlVideo : IVideoBackend
     private readonly IntPtr _renderer;
     private readonly IntPtr _texture;
 
+    private const int FILTER_SCALE = 3;  // Scale3x
+
     private readonly uint[] _palette = new uint[256];   // 0xAARRGGBB
-    private readonly uint[] _rgbBuffer;                  // Width*Height ARGB
+    private readonly uint[] _rgbBuffer;                  // Width*Height ARGB（原始）
+    private readonly uint[] _scaledBuffer;               // (Width*3)*(Height*3) ARGB（Scale3x 後）
+    private readonly int _scaledW, _scaledH;
 
     public int Width { get; }
     public int Height { get; }
@@ -24,6 +29,9 @@ internal sealed class SdlVideo : IVideoBackend
         Width = width;
         Height = height;
         _rgbBuffer = new uint[width * height];
+        _scaledW = width * FILTER_SCALE;
+        _scaledH = height * FILTER_SCALE;
+        _scaledBuffer = new uint[_scaledW * _scaledH];
 
         _window = SDL.SDL_CreateWindow(
             title,
@@ -40,15 +48,15 @@ internal sealed class SdlVideo : IVideoBackend
         if (_renderer == IntPtr.Zero)
             throw new InvalidOperationException($"SDL_CreateRenderer 失敗: {SDL.SDL_GetError()}");
 
-        // 以邏輯尺寸讓 SDL 自動等比例放大；整數縮放避免模糊。
-        SDL.SDL_RenderSetLogicalSize(_renderer, width, height);
+        // 邏輯尺寸 = Scale3x 後的解析度；整數縮放避免再模糊。
+        SDL.SDL_RenderSetLogicalSize(_renderer, _scaledW, _scaledH);
         SDL.SDL_RenderSetIntegerScale(_renderer, SDL.SDL_bool.SDL_TRUE);
 
         _texture = SDL.SDL_CreateTexture(
             _renderer,
             SDL.SDL_PIXELFORMAT_ARGB8888,
             (int)SDL.SDL_TextureAccess.SDL_TEXTUREACCESS_STREAMING,
-            width, height);
+            _scaledW, _scaledH);
         if (_texture == IntPtr.Zero)
             throw new InvalidOperationException($"SDL_CreateTexture 失敗: {SDL.SDL_GetError()}");
     }
@@ -71,9 +79,11 @@ internal sealed class SdlVideo : IVideoBackend
 
         unsafe
         {
-            fixed (uint* p = _rgbBuffer)
+            fixed (uint* src = _rgbBuffer)
+            fixed (uint* dst = _scaledBuffer)
             {
-                SDL.SDL_UpdateTexture(_texture, IntPtr.Zero, (IntPtr)p, Width * sizeof(uint));
+                ScalexTool.toScale3x_dx(src, Width, Height, dst);    // 320x200 → 960x600 平滑放大
+                SDL.SDL_UpdateTexture(_texture, IntPtr.Zero, (IntPtr)dst, _scaledW * sizeof(uint));
             }
         }
 
@@ -84,9 +94,10 @@ internal sealed class SdlVideo : IVideoBackend
 
     public void MapWindowToScreen(ref int x, ref int y)
     {
+        // 邏輯尺寸為 3x，換回遊戲 320x200 座標。
         SDL.SDL_RenderWindowToLogical(_renderer, x, y, out float lx, out float ly);
-        x = (int)lx;
-        y = (int)ly;
+        x = (int)lx / FILTER_SCALE;
+        y = (int)ly / FILTER_SCALE;
     }
 
     private bool _fullscreen;
