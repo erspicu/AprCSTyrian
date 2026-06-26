@@ -242,41 +242,9 @@ internal static unsafe partial class Tyrian2
             // === 敵人更新/繪製（homing/動畫/size 多格/立方加速/彈跳/砲塔發射）===
             Tyrian2.JE_updateEnemies();
 
-            // === 簡化玩家控制（完整 JE_playerMovement 待忠實移植）===
-            // 邊界用原版 JE_playerMovement 的確切值（mainint.c 3965-3988）：x 40-256, y 10-160
-            const int spd = 2;
-            if (Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_UP]]) player[0].y -= spd;
-            if (Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_DOWN]]) player[0].y += spd;
-            if (Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_LEFT]]) player[0].x -= spd;
-            if (Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_RIGHT]]) player[0].x += spd;
-            if (player[0].x > 256) player[0].x = 256;
-            if (player[0].x < 40) player[0].x = 40;
-            if (player[0].y > 160) player[0].y = 160;
-            if (player[0].y < 10) player[0].y = 10;
-
-            // === 簡化玩家射擊（對應 JE_playerMovement 4186-4204 的前/後武器發射）===
-            Mainint.button[0] = Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_FIRE]];
-            player[0].mouseX = (ushort)player[0].x;
-            player[0].mouseY = (ushort)player[0].y;
-
-            for (int temp = 0; temp < 2; temp++)
-            {
-                int item = player[0].items.weapon[temp].id;
-                if (item > 0)
-                {
-                    if (Config.shotRepeat[temp] > 0)
-                    {
-                        Config.shotRepeat[temp]--;
-                    }
-                    else if (Mainint.button[0])
-                    {
-                        int item_power = Config.galagaMode ? 0 : player[0].items.weapon[temp].power - 1;
-                        int item_mode = (temp == Players.REAR_WEAPON) ? (int)player[0].weapon_mode - 1 : 0;
-                        ushort wpNum = Episodes.weaponPort[item].op[item_mode * 11 + item_power];
-                        Shots.player_shot_create((ushort)item, (uint)temp, (ushort)player[0].x, (ushort)player[0].y, player[0].mouseX, player[0].mouseY, wpNum, 1);
-                    }
-                }
-            }
+            // === 玩家移動/速度/煞車/邊界/傾斜圖/射擊/僚機/充能/復活（忠實移植）===
+            // 對應 tyrian2.c:JE_main 行 1763 之 JE_mainGamePlayerFunctions()（此處 VGAScreen 已 = game_screen）
+            Mainint.JE_mainGamePlayerFunctions();
 
             // === 玩家子彈：移動/繪製 + 碰撞敵人（簡化 collision；完整版含 boss bar/連動敵人/edlevel 傷害態）===
             for (int z = 0; z < Shots.MAX_PWEAPON; z++)
@@ -332,9 +300,6 @@ internal static unsafe partial class Tyrian2
                     break;
                 }
             }
-
-            // 繪製玩家船艦（對應 JE_playerMovement 的 shipGr blit）
-            Sprites.blit_sprite2x2(Video.VGAScreen, player[0].x - 5, player[0].y - 7, Varz.shipGrPtr, Varz.shipGr);
 
             // === 敵彈：移動/繪製 + 擊中玩家 ===
             Tyrian2.simulateEnemyShots();

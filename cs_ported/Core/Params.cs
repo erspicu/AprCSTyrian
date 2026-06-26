@@ -6,6 +6,7 @@ namespace AprCSTyrian.Core;
 internal static class Params
 {
     public static bool richMode = false, constantPlay = false, constantDie = false;
+    public static sbyte constantLastX; // mainint.c: JE_shortint constantLastX
 
     private static readonly string[] pars =
         { "LOOT", "RECORD", "NOJOY", "CONSTANT", "DEATH", "NOSOUND", "NOXMAS", "YESXMAS" };

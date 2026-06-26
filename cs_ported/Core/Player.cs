@@ -124,4 +124,41 @@ internal static class Players
 
     public static bool all_players_alive() =>
         player[0].is_alive && (!Config.twoPlayerMode || player[1].is_alive);
+
+    private static readonly uint[] purple_balls_required = { 1, 1, 2, 4, 8, 12, 16, 20, 25, 30, 40, 50 };
+
+    /// <summary>對應 player.c:calc_purple_balls_needed。</summary>
+    public static void calc_purple_balls_needed(Player this_player)
+    {
+        this_player.purple_balls_needed = purple_balls_required[this_player.Lives];
+    }
+
+    /// <summary>對應 player.c:power_up_weapon。</summary>
+    public static bool power_up_weapon(Player this_player, uint port)
+    {
+        bool can_power_up = this_player.items.weapon[(int)port].id != 0 &&  // not None
+                            this_player.items.weapon[(int)port].power < 11; // not at max power
+        if (can_power_up)
+        {
+            ++this_player.items.weapon[(int)port].power;
+            Config.shotMultiPos[(int)port] = 0; // TODO: should be part of Player structure
+
+            calc_purple_balls_needed(this_player);
+        }
+        else  // cash consolation prize
+        {
+            this_player.cash += 1000;
+        }
+
+        return can_power_up;
+    }
+
+    /// <summary>對應 player.c:handle_got_purple_ball。</summary>
+    public static void handle_got_purple_ball(Player this_player)
+    {
+        if (this_player.purple_balls_needed > 1)
+            --this_player.purple_balls_needed;
+        else
+            power_up_weapon(this_player, (uint)(this_player.is_dragonwing ? REAR_WEAPON : FRONT_WEAPON));
+    }
 }

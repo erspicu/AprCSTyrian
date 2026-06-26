@@ -71,6 +71,7 @@ public sealed class TyrianGame
                 // Quit/ESC/右鍵回 false → 結束。
 
 
+
                 Tyrian2.intro_logos(); // 開場 logo 動畫（對應 opentyr.c main 的 intro_logos）
 
                 // 對應 opentyr.c main 的標題迴圈：initPlayerData → titleScreen → JE_main。

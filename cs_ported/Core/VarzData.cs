@@ -131,5 +131,21 @@ internal static partial class Varz
     public static bool gameLoaded, firstGameOver, enemyStillExploding;
     public static bool moveTyrianLogoUp, skipStarShowVGA;
     public static bool loadDestruct;
+
+    // === JE_playerMovement / JE_playerCollide 所需之 scalar 全域（對應 varz.c）===
+    public static ushort levelEndFxWait;          // varz.c: JE_word levelEndFxWait
+    public static sbyte levelEndWarp;             // varz.c: JE_shortint levelEndWarp
+    public static byte displayTime;               // varz.c: JE_byte displayTime
+    public static byte specialWait;               // varz.c: JE_byte specialWait
+    public static bool fireButtonHeld;            // varz.c: JE_boolean fireButtonHeld
+    public static float optionSatelliteRotate;    // varz.c: JE_real optionSatelliteRotate
+    public static short optionAttachmentMove;     // varz.c: JE_integer optionAttachmentMove
+    public static bool optionAttachmentLinked, optionAttachmentReturn; // varz.c JE_boolean
+    public static byte chargeWait, chargeLevel, chargeMax, chargeGr, chargeGrWait; // varz.c JE_byte
+    public static readonly byte[] SFExecuted = new byte[2]; // varz.c: JE_byte SFExecuted[2]
+
+    // demo 錄/放系統（待移植 demo file IO；先放狀態欄位供編譯）
+    public static byte demo_keys;                 // mainint.c: Uint8 demo_keys
+    public static ushort demo_keys_wait;          // mainint.c: Uint16 demo_keys_wait
 #pragma warning restore CS0649
 }

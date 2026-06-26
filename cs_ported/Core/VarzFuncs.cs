@@ -231,4 +231,14 @@ internal static unsafe partial class Varz
             }
         }
     }
+
+    /// <summary>
+    /// 對應 varz.c:JE_doSpecialShot —— 特殊武器發射（街機/Street-Fighter 觸發）。
+    /// TODO: 待移植 JE_specialComplete / flareDuration / zinglonDuration（特殊武器子系統未移植）。
+    /// 目前為可編譯空殼，不執行任何特殊武器行為（誠實回報）。
+    /// </summary>
+    public static void JE_doSpecialShot(byte playerNum, ref uint armor, ref uint shield)
+    {
+        // TODO: 待移植 varz.c JE_doSpecialShot 全文（依賴 JE_specialComplete 等未移植函式）
+    }
 }
