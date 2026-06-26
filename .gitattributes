@@ -1,0 +1,12 @@
+# 統一以 LF 儲存文字檔，避免 Windows 上 CRLF 轉換警告。
+* text=auto eol=lf
+
+# 二進位（遊戲資料/圖檔等）不做轉換
+*.png binary
+*.pcx binary
+*.shp binary
+*.snd binary
+*.dat binary
+*.lvl binary
+*.wav binary
+*.dll binary
