@@ -37,7 +37,10 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - [x] **shots 武器邏輯**：`Shots`(shots.c)：`PlayerShotDataType` + `playerShotData`/`shotAvail` +
       `simulate_player_shots`/`player_shot_set_direction`/`player_shot_move_and_draw`(out 參數)/`player_shot_create`
       （補 config 全域 power/shotRepeat/shotMultiPos/background2、varz soundQueue/x/y）
-- 註：config 序列化、varz.c 重度函式(specialComplete/doSpecialShot/getShipInfo/drawShield・Armor，需 dBar3/button/filter)、
+- [x] **音訊（混音 + SFX）**：`Loudness`(loudness.c 混音器，audioCallback→IAudioSource，Lock/Unlock)、
+      `Nortsong`(loadSndFile/JE_playSampleNum/JE_changeVolume，S8 11025→S16 升頻)、`Opl`/`Lds`(靜音 stub)
+      + IAudioBackend 加 Lock/Unlock，SdlAudio mono 44100；按 Space/Enter 可發 SFX
+- 註：**OPL 音樂(opl.c 1620行 + lds_play.c 772行)** 待下一輪；config 序列化、varz 重度函式、
       episodes 資料載入、MegaData 地圖結構待後續
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`

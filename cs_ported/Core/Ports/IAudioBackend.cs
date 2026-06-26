@@ -24,9 +24,18 @@ public interface IAudioBackend : IDisposable
     /// <summary>聲道數 (1=mono, 2=stereo)。</summary>
     int Channels { get; }
 
-    /// <summary>開始播放，並以 <paramref name="source"/> 作為樣本來源。</summary>
+    /// <summary>
+    /// 開啟裝置並以 <paramref name="source"/> 作為樣本來源。開啟後**保持暫停**，
+    /// 待呼叫端完成初始化後再以 <see cref="SetPaused"/>(false) 開始。
+    /// </summary>
     void Start(IAudioSource source);
 
     /// <summary>暫停/恢復播放。</summary>
     void SetPaused(bool paused);
+
+    /// <summary>鎖定（暫停）音訊 callback，期間可安全修改共享狀態（對應 SDL_LockAudioDevice）。</summary>
+    void Lock();
+
+    /// <summary>解除鎖定（對應 SDL_UnlockAudioDevice）。</summary>
+    void Unlock();
 }

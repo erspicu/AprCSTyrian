@@ -34,6 +34,11 @@ public sealed class TyrianGame
             {
                 Palette.JE_loadPals();
                 Sprites.JE_loadMainShapeTables("tyrian.shp"); // 字型/介面/option sprites
+
+                // 音訊：初始化混音器 + 載入音效（音樂 OPL 暫靜音）。
+                Loudness.init_audio();
+                Loudness.set_volume(255, 255);
+                Nortsong.loadSndFile(false);
             }
             else
                 BuildSyntheticPalette();
@@ -55,6 +60,10 @@ public sealed class TyrianGame
                 input.Poll();
                 if (input.QuitRequested || input.IsKeyDown(GameKey.Escape))
                     break;
+
+                // 測試音效：按 Space/Enter 觸發 SFX（驗證 loudness 混音管線發聲）。
+                if (dataFound && (input.WasKeyPressed(GameKey.Fire) || input.WasKeyPressed(GameKey.Enter)))
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
 
                 if (dataFound)
                 {

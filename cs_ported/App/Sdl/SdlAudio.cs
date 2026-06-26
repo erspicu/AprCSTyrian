@@ -46,13 +46,25 @@ internal sealed class SdlAudio : IAudioBackend
 
         SampleRate = obtained.freq;
         Channels = obtained.channels;
-        SDL.SDL_PauseAudioDevice(_device, 0); // 開始播放
+        // 開啟後保持暫停；呼叫端完成初始化後再 SetPaused(false)。
     }
 
     public void SetPaused(bool paused)
     {
         if (_device != 0)
             SDL.SDL_PauseAudioDevice(_device, paused ? 1 : 0);
+    }
+
+    public void Lock()
+    {
+        if (_device != 0)
+            SDL.SDL_LockAudioDevice(_device);
+    }
+
+    public void Unlock()
+    {
+        if (_device != 0)
+            SDL.SDL_UnlockAudioDevice(_device);
     }
 
     private void AudioCallback(IntPtr userdata, IntPtr stream, int len)

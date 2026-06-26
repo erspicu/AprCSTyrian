@@ -27,7 +27,8 @@ internal sealed class SdlPlatform : IGamePlatform, IDisposable
             throw new InvalidOperationException($"SDL_Init 失敗: {SDL.SDL_GetError()}");
 
         _video = new SdlVideo(windowTitle, VgaScreen.Width, VgaScreen.Height, scale);
-        _audio = new SdlAudio();
+        // Tyrian/Loudness 以 44.1kHz 單聲道 S16 輸出（OPL/混音為 mono）。
+        _audio = new SdlAudio(11025 * 4, 1);
         _input = new SdlInput();
         _clock = new SdlClock();
         _files = new PhysicalFileSystem(dataRoot, userRoot);
