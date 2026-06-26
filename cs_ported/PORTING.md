@@ -100,6 +100,7 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - [x] **game_menu.c 星圖導航繪製**：JE_drawDots/JE_drawPlanet + 星圖狀態(planetX/Y/planetDots/navX/tempNav/planetAni)
 - [x] **game_menu.c JE_computeDots/JE_partWay**(計算星圖路線導航點，sqrt(sqrt(dist²)) 點數 + 線性插值)
 - [x] **game_menu.c JE_updateNavScreen**(星圖導航畫面總繪製：網格/星球/虛線 + 平滑捲動 + 動畫)
+- [x] **game_menu.c 船艦規格屏**：JE_drawShipSpecs(綠化技術屏)+JE_scaleInPicture(放大進場)+JE_doShipSpecs
 - [x] **game_menu.c JE_drawLines/JE_drawNavLines**(網格背景線 + 星圖導航網格)
 - 註：config_file.c(opentyrian.cfg INI)、關卡地圖載入(megaData)、varz 其餘重度函式、
       主遊戲邏輯(mainint titleScreen/JE_main、tyrian2、game_menu、opentyr 進入點) 待後續

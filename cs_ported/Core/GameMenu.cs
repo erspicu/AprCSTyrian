@@ -33,6 +33,7 @@ internal static unsafe partial class GameMenu
     public static readonly byte[] curSel = new byte[MENU_MAX];
     public static byte curItemType, curItem, cursor;
     public static readonly CubeStruct[] cube = { new(), new(), new(), new() };
+    public static readonly PlayerItems[] old_items = new PlayerItems[2];
 #pragma warning restore CS0649
 
     /// <summary>對應 game_menu.c:JE_drawMenuHeader —— 畫選單標題。</summary>
@@ -289,6 +290,96 @@ internal static unsafe partial class GameMenu
                 tempZ += planetAni;
             Sprites.blit_sprite_dark(Video.VGAScreenSeg, tempX + 3, tempY + 3, (uint)Sprites.PLANET_SHAPES, (uint)tempZ, false);
             Sprites.blit_sprite(Video.VGAScreenSeg, tempX, tempY, (uint)Sprites.PLANET_SHAPES, (uint)tempZ);
+        }
+    }
+
+    /// <summary>對應 game_menu.c:JE_scaleInPicture —— 由中心放大進場（縮放動畫，可按鍵跳過）。</summary>
+    public static void JE_scaleInPicture(SDL_Surface dst, SDL_Surface src)
+    {
+        for (int i = 2; i < 160; i += 2)
+        {
+            JE_scaleBitmap(dst, src, 160 - i, 0, 160 + i - 1, 100 + (int)MathF.Round(i * 0.625f) - 1);
+            Video.JE_showVGA();
+            Joystick.push_joysticks_as_keyboard();
+            Keyboard.handleSdlEvents();
+            if (Keyboard.getInput())
+                break;
+        }
+        long n = (long)src.pitch * src.h; // SDL_BlitSurface(src, NULL, dst, NULL)
+        Buffer.MemoryCopy(src.pixels, dst.pixels, n, n);
+        Video.JE_showVGA();
+    }
+
+    /// <summary>對應 game_menu.c:JE_doShipSpecs —— 顯示船艦規格屏（繪製→載回背景→放大進場→等待）。</summary>
+    public static void JE_doShipSpecs()
+    {
+        JE_drawShipSpecs(Video.game_screen, Video.VGAScreen2);
+        Picload.JE_loadPic(Video.VGAScreen2, 1, false);
+        Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING);
+        JE_scaleInPicture(Video.VGAScreen, Video.game_screen);
+        Keyboard.waitUntilGetInput();
+    }
+
+    /// <summary>對應 game_menu.c:JE_drawShipSpecs —— 畫綠色船艦規格技術屏（船名/說明/船艦圖綠化）。</summary>
+    public static void JE_drawShipSpecs(SDL_Surface screen, SDL_Surface temp_screen)
+    {
+        var player = Players.player;
+
+        Video.JE_clr256(screen);
+        JE_drawLines(screen, true);
+        JE_drawLines(screen, false);
+        Vga256d.JE_rectangle(screen, 0, 0, 319, 199, 37);
+        Vga256d.JE_rectangle(screen, 1, 1, 318, 198, 35);
+
+        string shipName;
+        fixed (byte* p = Episodes.ships[player[0].items.ship].name) shipName = NameStr(p);
+        Fonthand.JE_outText(screen, 10, 2, shipName, 12, 3);
+        Helptext.JE_helpBox(screen, 100, 20, Helptext.shipInfo[player[0].items.ship - 1][0], 40, 9, 12, 1, Fonthand.FULL_SHADE);
+        Helptext.JE_helpBox(screen, 100, 100, Helptext.shipInfo[player[0].items.ship - 1][1], 40, 9, 12, 1, Fonthand.FULL_SHADE);
+        Fonthand.JE_outText(screen, Fonthand.JE_fontCenter(Helptext.miscText[4], (uint)Sprites.TINY_FONT), 190, Helptext.miscText[4], 12, 2);
+
+        int temp_index;
+        if (player[0].items.ship > 90)
+            temp_index = 32;
+        else if (player[0].items.ship > 0)
+            temp_index = Episodes.ships[player[0].items.ship].bigshipgraphic;
+        else
+            temp_index = Episodes.ships[old_items[0].ship].bigshipgraphic;
+
+        int temp_x, temp_y;
+        switch (temp_index)
+        {
+            case 32: temp_x = 35; temp_y = 33; break;
+            case 28: temp_x = 31; temp_y = 36; break;
+            case 33: temp_x = 31; temp_y = 35; break;
+            default: temp_x = 35; temp_y = 33; break;
+        }
+        temp_x -= 30;
+
+        Video.JE_clr256(temp_screen);
+        Sprites.blit_sprite(temp_screen, temp_x, temp_y, (uint)Sprites.OPTION_SHAPES, (uint)(temp_index - 1)); // 船艦圖
+
+        // 綠化：邊緣偵測（與鄰點低 4 位比較）→ 強制綠調 0xc0
+        byte* dst = screen.pixels;
+        byte* src = temp_screen.pixels;
+        int pitch = screen.pitch, h = screen.h;
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < pitch; x++)
+            {
+                int avg = 0;
+                if (y > 0) avg += *(src - pitch) & 0x0f;
+                if (y < h - 1) avg += *(src + pitch) & 0x0f;
+                if (x > 0) avg += *(src - 1) & 0x0f;
+                if (x < pitch - 1) avg += *(src + 1) & 0x0f;
+                avg /= 4;
+
+                if ((*src & 0x0f) > avg)
+                    *dst = (byte)((*src & 0x0f) | 0xc0);
+
+                src++;
+                dst++;
+            }
         }
     }
 
