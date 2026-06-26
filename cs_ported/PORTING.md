@@ -50,7 +50,9 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - [x] **物品資料庫載入**：`Episodes.JE_loadItemDat`(tyrian.hdt → weapons/weaponPort/special/powerSys/ships/
       options/shields/enemyDat 全部解析)、JE_initEpisode/scanForEpisodes/findNextEpisode；`Lvllib` 最小占位
       （已驗證：船艦名稱如 "USP Talon"/"Gencore Phoenix" 正確解析）
-- 註：config_file.c(opentyrian.cfg INI)、關卡資料(lvllib/JE_analyzeLevel)、varz 重度函式、
+- [x] **editship + 船艦資訊**：`Editship`(editship.c：JE_loadExtraShapes/JE_decryptShips，額外船艦圖)、
+      `Varz.JE_getShipInfo`/`JE_SGr`(解先前延後；shipGrPtr 改 Sprite2_array 值複製)
+- 註：config_file.c(opentyrian.cfg INI)、關卡資料(lvllib/JE_analyzeLevel)、varz 其餘重度函式、
       主遊戲邏輯(opentyr/mainint/tyrian2/game_menu) 待後續
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`
