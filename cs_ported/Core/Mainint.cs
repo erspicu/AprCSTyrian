@@ -13,6 +13,23 @@ internal static unsafe partial class Mainint
         dst[n] = 0;
     }
 
+    public static void JE_drawPortConfigButtons() // rear weapon pattern indicator
+    {
+        if (Config.twoPlayerMode)
+            return;
+
+        if (Players.player[0].weapon_mode == 1)
+        {
+            Sprites.blit_sprite(Video.VGAScreenSeg, 285, 44, Sprites.OPTION_SHAPES, 18); // lit
+            Sprites.blit_sprite(Video.VGAScreenSeg, 302, 44, Sprites.OPTION_SHAPES, 19); // unlit
+        }
+        else // == 2
+        {
+            Sprites.blit_sprite(Video.VGAScreenSeg, 285, 44, Sprites.OPTION_SHAPES, 19); // unlit
+            Sprites.blit_sprite(Video.VGAScreenSeg, 302, 44, Sprites.OPTION_SHAPES, 18); // lit
+        }
+    }
+
     public static void JE_initPlayerData()
     {
         var player = Players.player;
