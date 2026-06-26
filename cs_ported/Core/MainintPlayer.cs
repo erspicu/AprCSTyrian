@@ -393,10 +393,32 @@ internal static unsafe partial class Mainint
                             this_player.x += Params.constantLastX;
                         }
 
-                        // TODO: check if demo recording still works
                         if (Varz.record_demo)
                         {
-                            // TODO: 待移植 demo 錄製（demo_file/fwrite_u8 IO 未移植）
+                            bool new_input = false;
+
+                            for (int i = 0; i < 8; i++)
+                            {
+                                bool temp = (Varz.demo_keys & (1 << i)) != 0;
+                                if (temp != Keyboard.keysactive[Config.keySettings[i]])
+                                    new_input = true;
+                            }
+
+                            Varz.demo_keys_wait++;
+
+                            if (new_input)
+                            {
+                                CFile.write_u8(Varz.demo_file!, (byte)(Varz.demo_keys_wait >> 8));
+                                CFile.write_u8(Varz.demo_file!, (byte)Varz.demo_keys_wait);
+
+                                Varz.demo_keys = 0;
+                                for (int i = 0; i < 8; i++)
+                                    Varz.demo_keys = (byte)(Varz.demo_keys | (Keyboard.keysactive[Config.keySettings[i]] ? (1 << i) : 0));
+
+                                CFile.write_u8(Varz.demo_file!, Varz.demo_keys);
+
+                                Varz.demo_keys_wait = 0;
+                            }
                         }
                     }
 

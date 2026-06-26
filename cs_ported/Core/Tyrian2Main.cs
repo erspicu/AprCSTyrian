@@ -379,7 +379,58 @@ internal static unsafe partial class Tyrian2
             Config.JE_saveGame(Config.twoPlayerMode ? (byte)22 : (byte)11, "LAST LEVEL    ");
         }
 
-        // TODO: 待移植 demo 錄製（record_demo 寫檔，tyrian2.c 931-980）
+        if (!Varz.play_demo && Varz.record_demo)
+        {
+            byte new_demo_num = 0;
+            string tempStr;
+            do
+            {
+                tempStr = $"demorec.{new_demo_num++}";
+            } while (CFile.dir_file_exists(Config.get_user_directory(), tempStr)); // until file doesn't exist
+
+            Varz.demo_file = CFile.dir_fopen_warn(Config.get_user_directory(), tempStr, "wb");
+            if (Varz.demo_file == null)
+                throw new TyrianHaltException(1);
+
+            var ds = Varz.demo_file;
+            CFile.write_u8(ds, (byte)Episodes.episodeNum);
+
+            // Pad string buffer with NULs.
+            for (int i = 1; i < 10; ++i)
+                if (Config.levelName[i - 1] == 0)
+                    Config.levelName[i] = 0;
+            for (int i = 0; i < 10; ++i)
+                CFile.write_u8(ds, Config.levelName[i]);
+
+            CFile.write_u8(ds, lvlFileNum);
+
+            CFile.write_u8(ds, player[0].items.weapon[Players.FRONT_WEAPON].id);
+            CFile.write_u8(ds, player[0].items.weapon[Players.REAR_WEAPON].id);
+            CFile.write_u8(ds, player[0].items.super_arcade_mode);
+            CFile.write_u8(ds, player[0].items.sidekick[Players.LEFT_SIDEKICK]);
+            CFile.write_u8(ds, player[0].items.sidekick[Players.RIGHT_SIDEKICK]);
+            CFile.write_u8(ds, player[0].items.generator);
+
+            CFile.write_u8(ds, player[0].items.sidekick_level);
+            CFile.write_u8(ds, player[0].items.sidekick_series);
+
+            CFile.write_u8(ds, (byte)Episodes.initial_episode_num);
+
+            CFile.write_u8(ds, player[0].items.shield);
+            CFile.write_u8(ds, player[0].items.special);
+            CFile.write_u8(ds, player[0].items.ship);
+
+            for (int i = 0; i < 2; ++i)
+                CFile.write_u8(ds, player[0].items.weapon[i].power);
+
+            for (int i = 0; i < 3; ++i)
+                CFile.write_u8(ds, 0); // unused
+
+            CFile.write_u8(ds, levelSong);
+
+            Varz.demo_keys = 0;
+            Varz.demo_keys_wait = 0;
+        }
 
         Config.twoPlayerLinked = false;
         Config.linkGunDirec = MathF.PI;
