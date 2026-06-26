@@ -94,6 +94,7 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       （取代星空 demo）。開機序列: intro_logos→title→menu。「High Scores」已接 JE_highScoreScreen；「Instructions」已接 JE_helpSystem；「Load Game」已接 JE_loadScreen；僅 Setup(game_menu.c) 暫 stub
 - [x] **New Game 選單流程**：`Menus.gameplaySelect`/`episodeSelect`/`difficultySelect`(menus.c，含隱藏難度解鎖) +
       `Tyrian2.newGame`(1P/2P/arcade 模式設定、cash/ship)；「Start New Game」→ 真實 gameplay→episode→difficulty 導航
+- [x] **game_menu.c 起手**：`GameMenu.JE_drawItem`(物品圖示繪製：武器/動力/選項/護盾/船艦)
 - 註：config_file.c(opentyrian.cfg INI)、關卡地圖載入(megaData)、varz 其餘重度函式、
       主遊戲邏輯(mainint titleScreen/JE_main、tyrian2、game_menu、opentyr 進入點) 待後續
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
