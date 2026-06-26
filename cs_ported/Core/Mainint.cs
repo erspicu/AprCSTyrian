@@ -28,6 +28,240 @@ internal static unsafe partial class Mainint
         Buffer.MemoryCopy(src.pixels, dst.pixels, n, n);
     }
 
+    private const int MAX_PAGE = 8, TOPICS = 6;
+    private static readonly byte[] topicStart = { 0, 1, 2, 3, 7, 255 };
+
+    public static void JE_helpSystem(byte startTopic)
+    {
+        if (Sprites.shopSpriteSheet.data == null)
+            Sprites.JE_loadCompShapes(ref Sprites.shopSpriteSheet, '1');
+
+        byte topic = startTopic;
+        bool restart = true;
+
+        int menuItemsCount = Helptext.topicName.Length - 1;
+        int selectedIndex = 0;
+
+        const int xCenter = 320 / 2, yMenuHeader = 30, yMenuItems = 60, dyMenuItems = 20, hMenuItem = 13;
+        int[] wMenuItem = new int[Helptext.topicName.Length - 1];
+
+        for (; ; )
+        {
+            Nortsong.setFrameCount(1);
+
+            if (restart)
+            {
+                Loudness.play_song(Musmast.SONG_MAPVIEW);
+                Picload.JE_loadPic(Video.VGAScreen2, 2, false);
+            }
+
+            if (topic > 1)
+            {
+                if (!helpSystemPage(ref topic, ref restart))
+                    return;
+                selectedIndex = topic - 1;
+                topic = 1;
+                continue;
+            }
+
+            CopyScreen(Video.VGAScreen, Video.VGAScreen2);
+
+            FontDraw.drawFontHvShadowAligned(Video.VGAScreen, xCenter, yMenuHeader, Helptext.topicName[0], Font.FONT_LARGE, FontAlignment.ALIGN_CENTER, 15, -3, false, 2);
+
+            for (int i = 0; i < menuItemsCount; ++i)
+            {
+                string text = Helptext.topicName[i + 1];
+                wMenuItem[i] = Fonthand.JE_textWidth(text, (uint)Font.FONT_NORMAL);
+                int y = yMenuItems + dyMenuItems * i;
+                bool selected = i == selectedIndex;
+                FontDraw.drawFontHvShadowAligned(Video.VGAScreen, xCenter, y, text, Font.FONT_NORMAL, FontAlignment.ALIGN_CENTER, 15, (sbyte)(-3 + (selected ? 2 : 0)), false, 2);
+            }
+
+            Mouse.mouseCursor = Mouse.MOUSE_POINTER_NORMAL;
+
+            if (restart)
+            {
+                Palette.fade_palette(Palette.colors, 10, 0, 255);
+                restart = false;
+            }
+
+            Mouse.JE_mouseStart();
+            Video.JE_showVGA();
+            Mouse.JE_mouseReplace();
+
+            Keyboard.waitUntilElapsed();
+            Keyboard.waitUntilHasInput(InputFlags.INPUT_ANY);
+
+            bool action = false, done = false;
+
+            if (Keyboard.mouseGetInput(InputFlags.INPUT_ANY, out MouseInput mi))
+            {
+                for (int i = 0; i < menuItemsCount; ++i)
+                {
+                    int xMenuItem = xCenter - wMenuItem[i] / 2;
+                    if (mi.x >= xMenuItem && mi.x < xMenuItem + wMenuItem[i])
+                    {
+                        int yMenuItem = yMenuItems + dyMenuItems * i;
+                        if (mi.y >= yMenuItem && mi.y < yMenuItem + hMenuItem)
+                        {
+                            if (selectedIndex != i) { Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR); selectedIndex = i; }
+                            if (mi.button == SdlKeys.SDL_BUTTON_LEFT) action = true;
+                            break;
+                        }
+                    }
+                }
+                if (mi.button == SdlKeys.SDL_BUTTON_RIGHT) { Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING); done = true; }
+            }
+            else if (Keyboard.keyboardGetInput(out KeyboardInput ki))
+            {
+                switch (ki.scancode)
+                {
+                    case SdlKeys.SDL_SCANCODE_UP: Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR); selectedIndex = selectedIndex == 0 ? menuItemsCount - 1 : selectedIndex - 1; break;
+                    case SdlKeys.SDL_SCANCODE_DOWN: Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR); selectedIndex = selectedIndex == menuItemsCount - 1 ? 0 : selectedIndex + 1; break;
+                    case SdlKeys.SDL_SCANCODE_SPACE: case SdlKeys.SDL_SCANCODE_RETURN: action = true; break;
+                    case SdlKeys.SDL_SCANCODE_ESCAPE: Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING); done = true; break;
+                }
+            }
+
+            if (action)
+            {
+                Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+                topic = (byte)(selectedIndex + 2);
+                if (selectedIndex == menuItemsCount - 1)
+                    done = true;
+            }
+
+            if (done)
+            {
+                Palette.fade_black(15);
+                return;
+            }
+        }
+    }
+
+    private static bool helpSystemPage(ref byte topic, ref bool restart)
+    {
+        byte page = topicStart[topic - 1];
+        const int xCenter = 320 / 2;
+
+        for (; ; )
+        {
+            if (page == 0)
+            {
+                topic = 1;
+                return true;
+            }
+            else if (page > MAX_PAGE)
+            {
+                topic = (byte)(Helptext.topicName.Length - 1);
+                return true;
+            }
+
+            for (int temp = 0; temp < Helptext.topicName.Length; ++temp)
+            {
+                if (topicStart[temp] <= page)
+                    topic = (byte)(temp + 1);
+                else
+                    break;
+            }
+
+            Nortsong.setFrameCount(1);
+
+            CopyScreen(Video.VGAScreen, Video.VGAScreen2);
+            Vga256d.fill_rectangle_wh(Video.VGAScreen, 0, 192, 320, 8, 0);
+
+            string text = Helptext.topicName[topic - 1];
+            FontDraw.drawFontHvShadowAligned(Video.VGAScreen, xCenter, 1, text, Font.FONT_NORMAL, FontAlignment.ALIGN_CENTER, 15, -3, false, 2);
+
+            FontDraw.drawFontHvAligned(Video.VGAScreen, 10, 192, $"{Helptext.miscText[24]} {page - topicStart[topic - 1] + 1}", Font.FONT_SMALL, FontAlignment.ALIGN_LEFT, 13, 5);
+            FontDraw.drawFontHvAligned(Video.VGAScreen, 320 - 10, 192, $"{Helptext.miscText[25]} {page} of {MAX_PAGE}", Font.FONT_SMALL, FontAlignment.ALIGN_RIGHT, 13, 5);
+
+            switch (page)
+            {
+                case 1:
+                    HBox(10, 20, 2); HBox(10, 50, 5); HBox(10, 80, 21); HBox(10, 110, 1); HBox(10, 140, 28);
+                    break;
+                case 2:
+                    HBox(10, 20, 1); HBox(10, 60, 2); HBox(10, 100, 21); HBox(10, 140, 28);
+                    break;
+                case 3:
+                    HBox(10, 20, 5); HBox(10, 70, 6); HBox(10, 110, 7);
+                    break;
+                case 4:
+                    HBox(10, 20, 8); HBox(10, 55, 9); HBox(10, 87, 10); HBox(10, 120, 11); HBox(10, 170, 13);
+                    break;
+                case 5:
+                    HBox(10, 20, 14); HBox(10, 80, 15); HBox(10, 120, 16);
+                    break;
+                case 6:
+                    HBox(10, 20, 17); HBox(10, 40, 18); HBox(10, 130, 20);
+                    break;
+                case 7:
+                    HBox(10, 20, 21); HBox(10, 70, 22); HBox(10, 110, 23); HBox(10, 140, 24);
+                    break;
+                case 8:
+                    HBox(10, 20, 25); HBox(10, 60, 26); HBox(10, 100, 27); HBox(10, 140, 28); HBox(10, 170, 29);
+                    break;
+            }
+
+            if (restart)
+            {
+                Palette.fade_palette(Palette.colors, 10, 0, 255);
+                restart = false;
+            }
+
+            while (true)
+            {
+                Mouse.mouseCursor = Keyboard.mouseX < xCenter ? Mouse.MOUSE_POINTER_LEFT : Mouse.MOUSE_POINTER_RIGHT;
+                Mouse.JE_mouseStart();
+                Video.JE_showVGA();
+                Mouse.JE_mouseReplace();
+                Keyboard.waitUntilElapsed();
+                Keyboard.waitUntilHasInput(InputFlags.INPUT_ANY);
+                if (Keyboard.hasInput(InputFlags.INPUT_NO_MOTION))
+                    break;
+                Nortsong.setFrameCount(1);
+            }
+
+            bool done = false;
+
+            if (Keyboard.mouseGetInput(InputFlags.INPUT_NO_MOTION, out MouseInput mi))
+            {
+                switch (mi.button)
+                {
+                    case SdlKeys.SDL_BUTTON_LEFT:
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                        if (mi.x < xCenter) page -= 1; else page += 1;
+                        break;
+                    case SdlKeys.SDL_BUTTON_RIGHT:
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING); done = true;
+                        break;
+                }
+            }
+            else if (Keyboard.keyboardGetInput(out KeyboardInput ki))
+            {
+                switch (ki.scancode)
+                {
+                    case SdlKeys.SDL_SCANCODE_LEFT: Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR); page -= 1; break;
+                    case SdlKeys.SDL_SCANCODE_RIGHT:
+                    case SdlKeys.SDL_SCANCODE_SPACE:
+                    case SdlKeys.SDL_SCANCODE_RETURN:
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR); page += 1; break;
+                    case SdlKeys.SDL_SCANCODE_ESCAPE: Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING); done = true; break;
+                }
+            }
+
+            if (done)
+            {
+                Palette.fade_black(15);
+                return false;
+            }
+        }
+    }
+
+    private static void HBox(int x, int y, int msgNum) =>
+        Helptext.JE_HBox(Video.VGAScreen, x, y, (byte)msgNum, 60, 8, 12, 3);
+
     public static void JE_highScoreScreen()
     {
         if (Sprites.shopSpriteSheet.data == null)

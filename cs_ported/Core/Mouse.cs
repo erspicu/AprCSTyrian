@@ -5,7 +5,8 @@ namespace AprCSTyrian.Core;
 /// </summary>
 internal static unsafe class Mouse
 {
-    public const byte MOUSE_POINTER_NORMAL = 0;
+    public const byte MOUSE_POINTER_NORMAL = 0, MOUSE_POINTER_UP = 1, MOUSE_POINTER_DOWN = 2,
+                      MOUSE_POINTER_LEFT = 3, MOUSE_POINTER_RIGHT = 4;
 
     public static bool has_mouse = true;
     public static bool mouse_has_three_buttons = true;
