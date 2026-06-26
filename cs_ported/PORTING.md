@@ -57,7 +57,9 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       +JE_helpBox/HBox)；`Menus` 文字占位（已驗證："Episode 1: Escape"/"Start New Game" 正確）
 - [x] **命令列參數**：`ArgParse`(arg_parse.c getopt 重實作)+`Params`(params.c JE_paramCheck)+`Xmas`(占位)；
       網路選項視為不支援；TyrianGame/Program 串接 argv
-- 註：config_file.c(opentyrian.cfg INI)、關卡地圖載入(megaData)、varz 其餘重度函式、
+- [x] **護盾/裝甲 bar**：`Nortvars`(nortvars.c：JE_dBar3/JE_barDrawShadow) +
+      `Varz.JE_drawShield`/`JE_drawArmor`(解先前延後)
+- 註：config_file.c(opentyrian.cfg INI)、關卡地圖載入(megaData)、varz 其餘重度函式(specialComplete/doSpecialShot)、
       主遊戲邏輯(opentyr/mainint/tyrian2/game_menu) 待後續
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`
