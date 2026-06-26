@@ -85,6 +85,7 @@ internal static unsafe partial class Tyrian2
         Backgrnd.backMove2 = 2;
         Backgrnd.backMove3 = 3;
         Config.starActive = true;
+        Backgrnd.initialize_starfield();
         levelEnemyFrequency = 96;
         Config.cubeMax = 0;
         quitRequested = false;
@@ -134,6 +135,10 @@ internal static unsafe partial class Tyrian2
                     Backgrnd.mapYPosIdx -= 14;
                 }
             }
+
+            // 遊戲內星空（對應 tyrian2.c 1295）
+            if (Config.starActive)
+                Backgrnd.update_and_draw_starfield(Video.VGAScreen, Backgrnd.starfield_speed);
 
             // --- BACKGROUND 2 & 3 ---
             Backgrnd.draw_background_2(Video.VGAScreen);

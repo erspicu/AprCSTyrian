@@ -164,6 +164,33 @@ internal static unsafe partial class GameMenu
         }
     }
 
+    /// <summary>對應 game_menu.c:JE_initWeaponView —— 初始化武器預覽（玩家居中、清子彈、起星空）。</summary>
+    public static void JE_initWeaponView()
+    {
+        var player = Players.player;
+        Vga256d.fill_rectangle_xy(Video.VGAScreen, 8, 8, 144, 177, 0);
+
+        player[0].sidekick[Players.LEFT_SIDEKICK].x = 72 - 15;
+        player[0].sidekick[Players.LEFT_SIDEKICK].y = 120;
+        player[0].sidekick[Players.RIGHT_SIDEKICK].x = 72 + 15;
+        player[0].sidekick[Players.RIGHT_SIDEKICK].y = 120;
+
+        player[0].x = 72;
+        player[0].y = 110;
+        player[0].delta_x_shot_move = 0;
+        player[0].delta_y_shot_move = 0;
+        player[0].last_x_explosion_follow = 72;
+        player[0].last_y_explosion_follow = 110;
+        Config.power = 500;
+        Config.lastPower = 500;
+
+        Array.Clear(Shots.shotAvail);
+        Array.Fill(Config.shotRepeat, (byte)1);
+        Array.Clear(Config.shotMultiPos);
+
+        Backgrnd.initialize_starfield();
+    }
+
     /// <summary>對應 game_menu.c:JE_updateNavScreen —— 星圖導航畫面總繪製（網格/星球/虛線 + 平滑捲動）。</summary>
     public static void JE_updateNavScreen()
     {

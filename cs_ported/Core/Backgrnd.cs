@@ -21,6 +21,48 @@ internal static unsafe partial class Backgrnd
     public static int starfield_speed;
 #pragma warning restore CS0649
 
+    // 遊戲內星空（對應 backgrnd.c initialize_starfield / update_and_draw_starfield）
+    private const int MAX_STARS = 100;
+    private const int STARFIELD_HUE = 0x90;
+    private struct StarfieldStar { public int position; public int speed; public byte color; }
+    private static readonly StarfieldStar[] starfield_stars = new StarfieldStar[MAX_STARS];
+
+    public static void initialize_starfield()
+    {
+        int pitch = Video.VGAScreen.pitch;
+        for (int i = MAX_STARS - 1; i >= 0; --i)
+        {
+            starfield_stars[i].position = (int)(MtRand.mt_rand() % 320 + MtRand.mt_rand() % 200 * (uint)pitch);
+            starfield_stars[i].speed = (int)(MtRand.mt_rand() % 3 + 2);
+            starfield_stars[i].color = (byte)(MtRand.mt_rand() % 16 + STARFIELD_HUE);
+        }
+    }
+
+    public static void update_and_draw_starfield(SDL_Surface surface, int move_speed)
+    {
+        byte* p = surface.pixels;
+        int pitch = surface.pitch;
+        for (int i = MAX_STARS - 1; i >= 0; --i)
+        {
+            ref StarfieldStar star = ref starfield_stars[i];
+            star.position += (star.speed + move_speed) * pitch;
+
+            if (star.position < 177 * pitch)
+            {
+                if (p[star.position] == 0)
+                    p[star.position] = star.color;
+
+                if (star.color - 4 >= STARFIELD_HUE)
+                {
+                    if (p[star.position + 1] == 0) p[star.position + 1] = (byte)(star.color - 4);
+                    if (star.position > 0 && p[star.position - 1] == 0) p[star.position - 1] = (byte)(star.color - 4);
+                    if (p[star.position + pitch] == 0) p[star.position + pitch] = (byte)(star.color - 4);
+                    if (star.position >= pitch && p[star.position - pitch] == 0) p[star.position - pitch] = (byte)(star.color - 4);
+                }
+            }
+        }
+    }
+
     public static void JE_darkenBackground(ushort neat) /* wild detail level */
     {
         var screen = Video.VGAScreen;
