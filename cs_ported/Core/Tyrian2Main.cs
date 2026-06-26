@@ -242,16 +242,17 @@ internal static unsafe partial class Tyrian2
             // === 敵人更新/繪製（homing/動畫/size 多格/立方加速/彈跳/砲塔發射）===
             Tyrian2.JE_updateEnemies();
 
-            // === 簡化玩家控制（完整 JE_playerMovement 待移植：射擊/僚機/選項/爆炸/復活）===
-            const int spd = 2; // CURRENT_KEY_SPEED=1，骨架略加快以利操作
+            // === 簡化玩家控制（完整 JE_playerMovement 待忠實移植）===
+            // 邊界用原版 JE_playerMovement 的確切值（mainint.c 3965-3988）：x 40-256, y 10-160
+            const int spd = 2;
             if (Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_UP]]) player[0].y -= spd;
             if (Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_DOWN]]) player[0].y += spd;
             if (Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_LEFT]]) player[0].x -= spd;
             if (Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_RIGHT]]) player[0].x += spd;
-            if (player[0].x < 5) player[0].x = 5;
-            if (player[0].x > 295) player[0].x = 295;
+            if (player[0].x > 256) player[0].x = 256;
+            if (player[0].x < 40) player[0].x = 40;
+            if (player[0].y > 160) player[0].y = 160;
             if (player[0].y < 10) player[0].y = 10;
-            if (player[0].y > 185) player[0].y = 185;
 
             // === 簡化玩家射擊（對應 JE_playerMovement 4186-4204 的前/後武器發射）===
             Mainint.button[0] = Keyboard.keysactive[Config.keySettings[Config.KEY_SETTING_FIRE]];
