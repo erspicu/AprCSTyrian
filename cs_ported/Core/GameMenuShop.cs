@@ -1090,6 +1090,24 @@ internal static unsafe partial class GameMenu
                 }
             }
 
+            /* Draw current money and shield/armor bars, when appropriate */
+            if (((curMenu <= MENU_OPTIONS ||
+                  curMenu == MENU_KEYBOARD_CONFIG ||
+                  curMenu == MENU_LOAD_SAVE ||
+                  curMenu >= MENU_1_PLAYER_ARCADE) &&
+                 !Config.twoPlayerMode) ||
+                (curMenu == MENU_UPGRADE_SUB &&
+                 (curSel[MENU_UPGRADES] >= 1 && curSel[MENU_UPGRADES] <= 6)))
+            {
+                if (curMenu != MENU_UPGRADE_SUB)
+                {
+                    string buf = $"{player[0].cash}";
+                    Fonthand.JE_textShade(Video.VGAScreen, 65, 173, buf, 1, 6, Fonthand.DARKEN);
+                }
+                Nortvars.JE_barDrawShadow(Video.VGAScreen, 42, 152, 3, 14, (int)player[0].armor, 2, 13);
+                Nortvars.JE_barDrawShadow(Video.VGAScreen, 104, 152, 2, 14, Episodes.shields[player[0].items.shield].mpwr * 2, 2, 13);
+            }
+
             /* Draw crap on the left side: ship illustration etc. */
             if ((curMenu >= MENU_FULL_GAME && curMenu <= MENU_OPTIONS) ||
                 curMenu == MENU_KEYBOARD_CONFIG ||
