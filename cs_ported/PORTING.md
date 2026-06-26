@@ -16,6 +16,11 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       `Globals`(平台/路徑橋接)、`TyrianHaltException`+`Varz.JE_tyrianHalt`
 - [x] **Phase B 部分**：`CFile`(file.c：data_dir/dir_fopen/fread・fwrite_die/typed・scalar 讀寫，FILE*→Stream)、
       `MemIO`(memreader.c/memwriter.c：MemReader/MemWriter 指標式 LE)
+- [x] **Phase C 影像/調色盤**：`SdlShim`(SDL_Color/Rect/Surface) + `Vga256d`(繪圖原語) +
+      `Video`(video.c：VGAScreen surfaces/init_video/JE_showVGA→IVideoBackend) +
+      `Palette`(palette.c：JE_loadPals/set_palette/fade*) +
+      `Nortsong`(計時) + `Keyboard`/`Mouse`(最小橋接)
+- [x] **可視里程碑**：ported 管線實機跑通（VGAScreen 非託管 → JE_showVGA → IVideoBackend，無 crash）
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`
 - [x] Core 型別：`Color`(8-bit RGB, `FromVga`) / `GameKey` / `VgaScreen`(320×200)

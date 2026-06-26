@@ -3,17 +3,16 @@ using AprCSTyrian.Core.Ports;
 namespace AprCSTyrian.Core;
 
 /// <summary>
-/// 遊戲核心進入點。目前為移植骨架：透過 Ports 顯示一個動態測試畫面，
-/// 用以驗證 Core ↔ Adapter (SDL) 的影格/調色盤/輸入管線是否打通。
-/// 之後將逐步把 sources/ 的 C 模組（opentyr/mainint/tyrian2…）移植進來。
+/// 遊戲核心進入點（移植骨架）。目前驅動已移植的 video/palette/vga256d 管線：
+/// init_video → 載入/建立調色盤 → 以繪圖原語作畫到 VGAScreen → JE_showVGA。
+/// 偵測不到 Tyrian 資料檔時退回合成調色盤，確保視窗仍可顯示。
+/// 之後將以 opentyr.c 的 main/titleScreen/JE_main 取代本暫時迴圈。
 /// </summary>
 public sealed class TyrianGame
 {
     private readonly IGamePlatform _platform;
     private readonly string _dataDir;
     private readonly string _userDir;
-    private readonly byte[] _framebuffer = new byte[VgaScreen.PixelCount];
-    private readonly Color[] _palette = new Color[256];
 
     public TyrianGame(IGamePlatform platform, string dataDir, string userDir)
     {
@@ -23,56 +22,81 @@ public sealed class TyrianGame
     }
 
     /// <summary>執行主迴圈，直到使用者要求離開。</summary>
-    public void Run()
+    public unsafe void Run()
     {
         Globals.Init(_platform, _dataDir, _userDir);
 
-        BuildTestPalette();
-        _platform.Video.SetPalette(_palette);
-
-        var input = _platform.Input;
-        var clock = _platform.Clock;
-
-        uint frame = 0;
-        while (true)
+        Video.init_video();
+        try
         {
-            input.Poll();
-            if (input.QuitRequested || input.IsKeyDown(GameKey.Escape))
-                break;
+            bool dataFound = CFile.data_dir().Length != 0;
+            if (dataFound)
+            {
+                // 載入真正的 Tyrian 調色盤並套用第一組。
+                Palette.JE_loadPals();
+                Palette.set_palette(Palette.palettes[0], 0, 255);
+            }
+            else
+            {
+                // 無資料檔：以合成調色盤示意，仍走 set_palette → 上傳管線。
+                BuildSyntheticPalette();
+                Palette.set_palette(Palette.colors, 0, 255);
+            }
 
-            RenderTestPattern(frame);
-            _platform.Video.Present(_framebuffer);
+            var input = _platform.Input;
+            uint frame = 0;
+            while (true)
+            {
+                input.Poll();
+                if (input.QuitRequested || input.IsKeyDown(GameKey.Escape))
+                    break;
 
-            frame++;
-            clock.Delay(16); // ~60 FPS（暫以固定延遲，之後改為原版的計時節奏）
+                RenderTestPattern(frame);
+                Video.JE_showVGA();
+
+                frame++;
+                Nortsong.setFrameCount(1);
+                Nortsong.delayUntilElapsed();
+            }
+        }
+        finally
+        {
+            Video.deinit_video();
         }
     }
 
-    /// <summary>建立一條 HSV 色環調色盤，方便肉眼確認調色盤管線正確。</summary>
-    private void BuildTestPalette()
+    /// <summary>填入一條 HSV 色環到 Palette.colors（資料檔缺席時的示意調色盤）。</summary>
+    private static void BuildSyntheticPalette()
     {
-        _palette[0] = new Color(0, 0, 0);
+        Palette.colors[0] = new SDL_Color(0, 0, 0);
         for (int i = 1; i < 256; i++)
         {
             double h = (i - 1) / 255.0 * 360.0;
             (byte r, byte g, byte b) = HsvToRgb(h, 1.0, 1.0);
-            _palette[i] = new Color(r, g, b);
+            Palette.colors[i] = new SDL_Color(r, g, b);
         }
     }
 
-    /// <summary>畫一個會隨 frame 捲動的同心/斜紋圖樣，證明每幀更新有效。</summary>
-    private void RenderTestPattern(uint frame)
+    /// <summary>用已移植的繪圖原語在 VGAScreen 上畫動態圖樣，驗證整條管線。</summary>
+    private static unsafe void RenderTestPattern(uint frame)
     {
+        var screen = Video.VGAScreen;
         int t = (int)frame;
-        for (int y = 0; y < VgaScreen.Height; y++)
+        byte* px = screen.pixels;
+        for (int y = 0; y < Video.vga_height; y++)
         {
-            int rowBase = y * VgaScreen.Width;
-            for (int x = 0; x < VgaScreen.Width; x++)
+            int rowBase = y * screen.pitch;
+            for (int x = 0; x < Video.vga_width; x++)
             {
                 int v = (x + y + t) ^ ((x - y) >> 1);
-                _framebuffer[rowBase + x] = (byte)(1 + (v & 0xFF) % 255);
+                px[rowBase + x] = (byte)(1 + (v & 0xFF) % 255);
             }
         }
+
+        // 疊一個會移動的方框，順便驗證 vga256d 原語。
+        int bx = 20 + (t % 240);
+        Vga256d.JE_rectangle(screen, bx, 40, bx + 60, 160, 255);
+        Vga256d.fill_rectangle_wh(screen, bx + 5, 45, 50, 20, 200);
     }
 
     private static (byte, byte, byte) HsvToRgb(double h, double s, double v)
