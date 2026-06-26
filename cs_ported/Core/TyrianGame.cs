@@ -41,6 +41,10 @@ public sealed class TyrianGame
                 Palette.JE_loadPals();
                 Sprites.JE_loadMainShapeTables("tyrian.shp"); // 字型/介面/option sprites
 
+                // 載入完整物品/敵人資料庫 (tyrian.hdt)。
+                Episodes.JE_scanForEpisodes();
+                Episodes.JE_initEpisode(1);
+
                 // 音訊：初始化混音器 + 載入音效 + 播放 OPL 音樂。
                 Loudness.init_audio();
                 Loudness.set_volume((byte)Nortsong.tyrMusicVolume, (byte)Nortsong.fxVolume);

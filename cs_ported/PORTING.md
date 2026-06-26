@@ -47,7 +47,11 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - [x] **config 序列化**：`Config`(config.c)：二進位設定 tyrian.cfg + 存檔/高分 tyrian.sav
       (loadConfiguration/saveConfiguration/loadSaves/saveSaves/JE_saveGame/JE_loadGame + 加解密 + 預設高分榜
       + JE_initProcessorType/setNewGameSpeed)，用已移植 MemIO；TyrianGame 啟動載入
-- 註：config_file.c(opentyrian.cfg INI)、episode 資料載入、varz 重度函式、MegaData 地圖結構待後續
+- [x] **物品資料庫載入**：`Episodes.JE_loadItemDat`(tyrian.hdt → weapons/weaponPort/special/powerSys/ships/
+      options/shields/enemyDat 全部解析)、JE_initEpisode/scanForEpisodes/findNextEpisode；`Lvllib` 最小占位
+      （已驗證：船艦名稱如 "USP Talon"/"Gencore Phoenix" 正確解析）
+- 註：config_file.c(opentyrian.cfg INI)、關卡資料(lvllib/JE_analyzeLevel)、varz 重度函式、
+      主遊戲邏輯(opentyr/mainint/tyrian2/game_menu) 待後續
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`
 - [x] Core 型別：`Color`(8-bit RGB, `FromVga`) / `GameKey` / `VgaScreen`(320×200)

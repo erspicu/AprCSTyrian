@@ -126,7 +126,7 @@ internal unsafe struct JE_EnemyDat
 /// 移植 sources/src/episodes.h —— 物品/敵人資料全域與 episode 狀態。
 /// 資料載入/掃描函式 (JE_loadItemDat/initEpisode/findNextEpisode/scanForEpisodes) 待後續移植。
 /// </summary>
-internal static class Episodes
+internal static unsafe partial class Episodes
 {
     public const int FIRST_LEVEL = 1;
     public const int EPISODE_MAX = 5;
@@ -150,10 +150,4 @@ internal static class Episodes
     public static int episode1DataLoc;
     public static bool bonusLevel;
     public static bool jumpBackToEpisode1;
-
-    /// <summary>對應 episodes.c:JE_initEpisode —— **目前為占位**（關卡/事件資料載入待後續移植）。</summary>
-    public static void JE_initEpisode(int newEpisode)
-    {
-        episodeNum = (byte)newEpisode;
-    }
 }
