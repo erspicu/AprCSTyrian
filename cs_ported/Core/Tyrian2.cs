@@ -321,6 +321,98 @@ internal static unsafe partial class Tyrian2
     // === 子畫面 stub（待後續移植；目前回到標題） ===
     private static void setupMenu() { }
     private static void JE_whoa() { }
-    private static void newSuperTyrianGame() { }
-    private static bool newSuperArcadeGame(int i) => false;
+    private static bool newSuperArcadeGame(int i)
+    {
+        Players.player[0].items.ship = Varz.SAShip[i];
+
+        if (Menus.episodeSelect() && Menus.difficultySelect())
+        {
+            /* Start special mode! */
+            Picload.JE_loadPic(Video.VGAScreen, 1, false);
+            Video.JE_clr256(Video.VGAScreen);
+            Fonthand.JE_dString(Video.VGAScreen, Fonthand.JE_fontCenter(Helptext.superShips[0], (uint)Sprites.FONT_SHAPES), 30, Helptext.superShips[0], (uint)Sprites.FONT_SHAPES);
+            Fonthand.JE_dString(Video.VGAScreen, Fonthand.JE_fontCenter(Helptext.superShips[i + 1], (uint)Sprites.SMALL_FONT_SHAPES), 100, Helptext.superShips[i + 1], (uint)Sprites.SMALL_FONT_SHAPES);
+            Varz.tempW = Episodes.ships[Players.player[0].items.ship].shipgraphic;
+            if (Varz.tempW != 1)
+                Sprites.blit_sprite2x2(Video.VGAScreen, 148, 70, Sprites.spriteSheet9, Varz.tempW);
+
+            Video.JE_showVGA();
+            Palette.fade_palette(Palette.colors, 50, 0, 255);
+
+            Keyboard.waitUntilGetInput();
+
+            Config.twoPlayerMode = false;
+            Config.onePlayerAction = true;
+            Config.superArcadeMode = (byte)(i + 1);
+            Varz.gameLoaded = true;
+            Config.initialDifficulty = ++Config.difficultyLevel;
+
+            Players.player[0].cash = 0;
+
+            Players.player[0].items.weapon[Players.FRONT_WEAPON].id = (byte)Varz.SAWeapon[i, 0];
+            Players.player[0].items.special = (byte)Varz.SASpecialWeapon[i];
+            if (Config.superArcadeMode == VarzConst.SA_NORTSHIPZ)
+            {
+                for (int j = 0; j < 2; ++j)  // COUNTOF(sidekick)
+                    Players.player[0].items.sidekick[j] = 24;  // Companion Ship Quicksilver
+            }
+
+            Palette.fade_black(10);
+        }
+
+        return Varz.gameLoaded;
+    }
+
+    private static void newSuperTyrianGame()
+    {
+        /* SuperTyrian */
+
+        Config.initialDifficulty = (sbyte)(Keyboard.keysactive[SdlKeys.SDL_SCANCODE_SCROLLLOCK] ? Config.DIFFICULTY_SUICIDE : Config.DIFFICULTY_ZINGLON);
+
+        Video.JE_clr256(Video.VGAScreen);
+        Fonthand.JE_outText(Video.VGAScreen, 10, 10, "Cheat codes have been disabled.", 15, 4);
+        if (Config.initialDifficulty == Config.DIFFICULTY_ZINGLON)
+            Fonthand.JE_outText(Video.VGAScreen, 10, 20, "Difficulty level has been set to Lord of Game.", 15, 4);
+        else
+            Fonthand.JE_outText(Video.VGAScreen, 10, 20, "Difficulty level has been set to Suicide.", 15, 4);
+        Fonthand.JE_outText(Video.VGAScreen, 10, 30, "It is imperative that you discover the special codes.", 15, 4);
+        if (Config.initialDifficulty == Config.DIFFICULTY_ZINGLON)
+            Fonthand.JE_outText(Video.VGAScreen, 10, 40, "(Next time, for an easier challenge hold down SCROLL LOCK.)", 15, 4);
+        Fonthand.JE_outText(Video.VGAScreen, 10, 60, "Prepare to play...", 15, 4);
+
+        string buf = $"{Helptext.miscTextB[4]} {Helptext.pName[0]}";
+        Fonthand.JE_dString(Video.VGAScreen, Fonthand.JE_fontCenter(buf, (uint)Sprites.FONT_SHAPES), 110, buf, (uint)Sprites.FONT_SHAPES);
+
+        Loudness.play_song(16);
+        Nortsong.JE_playSampleNum((byte)Sndmast.V_DANGER);
+
+        Video.JE_showVGA();
+        Palette.fade_palette(Palette.colors, 10, 0, 255);
+
+        while (true)
+        {
+            Keyboard.waitUntilHasInput(InputFlags.INPUT_NO_MOTION);
+
+            if ((Keyboard.keyboardGetInput(out KeyboardInput keyboardInput) &&
+                 keyboardInput.scancode != SdlKeys.SDL_SCANCODE_SCROLLLOCK) ||
+                Keyboard.mouseGetInput(InputFlags.INPUT_NO_MOTION, out _))
+            {
+                break;
+            }
+        }
+
+        Episodes.JE_initEpisode(1);
+        Params.constantDie = false;
+        Config.superTyrian = true;
+        Config.onePlayerAction = true;
+        Varz.gameLoaded = true;
+        Config.difficultyLevel = Config.initialDifficulty;
+
+        Players.player[0].cash = 0;
+
+        Players.player[0].items.ship = 13;                            // The Stalker 21.126
+        Players.player[0].items.weapon[Players.FRONT_WEAPON].id = 39;  // Atomic RailGun
+
+        Palette.fade_black(10);
+    }
 }
