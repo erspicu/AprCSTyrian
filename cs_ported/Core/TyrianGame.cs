@@ -85,12 +85,17 @@ public sealed class TyrianGame
 
 
 
+
                 Tyrian2.intro_logos(); // 開場 logo 動畫（對應 opentyr.c main 的 intro_logos）
 
                 // 對應 opentyr.c main 的標題迴圈：initPlayerData → titleScreen → JE_main。
                 while (true)
                 {
                     Mainint.JE_initPlayerData();
+
+                    Varz.play_demo = false;     // 對應 opentyr.c main 迴圈：每輪重置 demo 旗標
+                    Varz.stopped_demo = false;
+
                     if (!Tyrian2.titleScreen())
                         break;
 

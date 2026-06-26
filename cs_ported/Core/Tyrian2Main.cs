@@ -128,7 +128,12 @@ internal static unsafe partial class Tyrian2
 
         if (Varz.play_demo || Varz.record_demo)
         {
-            // TODO: 待移植 demo 檔案 IO（fclose(demo_file)）
+            if (Varz.demo_file != null)
+            {
+                CFile.fclose(Varz.demo_file);
+                Varz.demo_file = null;
+            }
+
             if (Varz.play_demo)
             {
                 Loudness.stop_song();

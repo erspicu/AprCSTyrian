@@ -154,7 +154,9 @@ internal static partial class Varz
     public static ushort specialWeaponWpn;        // varz.c: JE_word specialWeaponWpn
     public static bool linkToPlayer;              // varz.c: JE_boolean linkToPlayer
 
-    // demo 錄/放系統（待移植 demo file IO；先放狀態欄位供編譯）
+    // demo 錄/放系統（對應 varz.c / varz.h）
+    public static byte demo_num;                  // varz.h: Uint8 demo_num
+    public static Stream? demo_file;              // varz.h: FILE *demo_file
     public static byte demo_keys;                 // mainint.c: Uint8 demo_keys
     public static ushort demo_keys_wait;          // mainint.c: Uint16 demo_keys_wait
 #pragma warning restore CS0649

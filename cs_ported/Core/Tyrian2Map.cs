@@ -178,7 +178,7 @@ internal static unsafe partial class Tyrian2
         Fonthand.levelWarningDisplay = false;
     }
 
-    private static void load_next_demo() { /* TODO: demo 載入 */ }
+    private static void load_next_demo() => Mainint.load_next_demo();
     private static uint JE_totalScore(int p) => Mainint.JE_totalScore(p); // 現金 + 各裝備售價
 
     public static void JE_loadMap()

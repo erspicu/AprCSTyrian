@@ -36,13 +36,52 @@ internal static unsafe partial class Mainint
     }
 
     /// <summary>
-    /// 對應 mainint.c:replay_demo_keys —— demo 回放輸入。
-    /// TODO: 待移植 demo 檔案 IO（demo_file/fread_u8/feof）；目前空殼回傳 false（無更多按鍵）。
+    /// 對應 mainint.c:replay_demo_keys（2279-2315）—— 每幀讀 demo 按鍵並套用至 player[0]/button[]，EOF 回 false。
     /// </summary>
     public static bool replay_demo_keys()
     {
-        // TODO: 待移植 demo 回放（demo_file IO 未移植）
-        return false;
+        Stream demo_file = Varz.demo_file!;
+
+        byte* temp2 = stackalloc byte[2];
+
+        while (Varz.demo_keys_wait == 0)
+        {
+            Varz.demo_keys = 0;
+            byte k = 0;
+            nuint got1 = CFile.fread_u8(&k, 1, demo_file);
+            Varz.demo_keys = k;
+
+            temp2[0] = 0; temp2[1] = 0;
+            nuint got2 = CFile.fread_u8(temp2, 2, demo_file);
+            Varz.demo_keys_wait = (ushort)((temp2[0] << 8) | temp2[1]);
+
+            if (got1 < 1 || got2 < 2)  // feof(demo_file)
+            {
+                // no more keys
+                return false;
+            }
+        }
+
+        Varz.demo_keys_wait--;
+
+        Player p0 = Players.player[0];
+
+        if ((Varz.demo_keys & (1 << 0)) != 0)
+            p0.y -= VarzConst.CURRENT_KEY_SPEED;
+        if ((Varz.demo_keys & (1 << 1)) != 0)
+            p0.y += VarzConst.CURRENT_KEY_SPEED;
+
+        if ((Varz.demo_keys & (1 << 2)) != 0)
+            p0.x -= VarzConst.CURRENT_KEY_SPEED;
+        if ((Varz.demo_keys & (1 << 3)) != 0)
+            p0.x += VarzConst.CURRENT_KEY_SPEED;
+
+        button[0] = (Varz.demo_keys & (1 << 4)) != 0;
+        button[3] = (Varz.demo_keys & (1 << 5)) != 0;
+        button[1] = (Varz.demo_keys & (1 << 6)) != 0;
+        button[2] = (Varz.demo_keys & (1 << 7)) != 0;
+
+        return true;
     }
 
     /// <summary>對應 mainint.c:JE_SFCodes —— Street Fighter 式方向連續輸入解碼以觸發特殊武器。</summary>

@@ -33,6 +33,68 @@ internal static unsafe partial class Mainint
 
     public static ushort textErase; // mainint.c: JE_word textErase
 
+    /// <summary>
+    /// 對應 mainint.c:load_next_demo（2223-2277）—— 載入下一個 demo 檔（demo.N，N 循環 1-5），
+    /// 讀 episode/關卡名/lvlFileNum/玩家裝備/levelSong，並設定首個 demo_keys_wait。
+    /// </summary>
+    public static bool load_next_demo()
+    {
+        if (++Varz.demo_num > 5)
+            Varz.demo_num = 1;
+
+        string demo_filename = $"demo.{Varz.demo_num}";
+        Varz.demo_file = CFile.dir_fopen_die(CFile.data_dir(), demo_filename, "rb"); // TODO: only play demos from existing file (instead of dying)
+        Stream demo_file = Varz.demo_file;
+
+        Config.difficultyLevel = (sbyte)Config.DIFFICULTY_NORMAL;
+        Tyrian2.bonusLevelCurrent = false;
+
+        byte temp = CFile.read_u8(demo_file);
+        Episodes.JE_initEpisode(temp);
+
+        for (int i = 0; i < 10; ++i)
+            Config.levelName[i] = CFile.read_u8(demo_file);
+        Config.levelName[10] = 0;
+
+        Tyrian2.lvlFileNum = CFile.read_u8(demo_file);
+
+        var player = Players.player;
+        player[0].items.weapon[Players.FRONT_WEAPON].id   = CFile.read_u8(demo_file);
+        player[0].items.weapon[Players.REAR_WEAPON].id    = CFile.read_u8(demo_file);
+        player[0].items.super_arcade_mode                 = CFile.read_u8(demo_file);
+        player[0].items.sidekick[Players.LEFT_SIDEKICK]   = CFile.read_u8(demo_file);
+        player[0].items.sidekick[Players.RIGHT_SIDEKICK]  = CFile.read_u8(demo_file);
+        player[0].items.generator                         = CFile.read_u8(demo_file);
+
+        player[0].items.sidekick_level                    = CFile.read_u8(demo_file); // could probably ignore
+        player[0].items.sidekick_series                   = CFile.read_u8(demo_file); // could probably ignore
+
+        Episodes.initial_episode_num                      = CFile.read_u8(demo_file); // could probably ignore
+
+        player[0].items.shield                            = CFile.read_u8(demo_file);
+        player[0].items.special                           = CFile.read_u8(demo_file);
+        player[0].items.ship                              = CFile.read_u8(demo_file);
+
+        for (int i = 0; i < 2; ++i)
+            player[0].items.weapon[i].power               = CFile.read_u8(demo_file);
+
+        for (int i = 0; i < 3; ++i)
+            CFile.read_u8(demo_file);  // Uint8 unused[3]
+
+        Tyrian2.levelSong = CFile.read_u8(demo_file);
+
+        Varz.demo_keys = 0;
+
+        byte* temp2 = stackalloc byte[2];
+        temp2[0] = 0; temp2[1] = 0;
+        CFile.fread_u8(temp2, 2, demo_file);
+        Varz.demo_keys_wait = (ushort)((temp2[0] << 8) | temp2[1]);
+
+        // printf("loaded demo '%s'\n", demo_filename);
+
+        return true;
+    }
+
     // ===========================================================================
     // 以下為 JE_main 逐行移植所需、但尚未移植之函式的「空殼」（no-op），
     // 讓主迴圈可編譯。實際行為待日後填入；呼叫點皆受對應旗標守護（多數情況不會觸發）。

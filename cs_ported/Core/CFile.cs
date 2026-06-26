@@ -152,6 +152,14 @@ internal static unsafe class CFile
 
     // === typed 指標式 fread（LE：直接讀原始位元組）===
 
+    // 8-bit fread（對應 file.h:fread_u8）—— 不 die，回傳實際讀取的位元組數（供 EOF/feof 判斷）。
+    public static nuint fread_u8(byte* buffer, nuint count, Stream s)
+    {
+        int total = checked((int)count);
+        var span = new Span<byte>(buffer, total);
+        return (nuint)ReadAll(s, span);
+    }
+
     public static void fread_u8_die(byte* buffer, nuint count, Stream s) => fread_die(buffer, 1, count, s);
     public static void fread_s8_die(sbyte* buffer, nuint count, Stream s) => fread_die(buffer, 1, count, s);
     public static void fread_u16_die(ushort* buffer, nuint count, Stream s) => fread_die(buffer, 2, count, s);
