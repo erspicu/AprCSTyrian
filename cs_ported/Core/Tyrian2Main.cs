@@ -224,7 +224,7 @@ internal static unsafe partial class Tyrian2
         Fonthand.JE_outText(Video.VGAScreen, 268, Config.twoPlayerMode ? 76 : 118, CStrBytes(Config.levelName), 12, 4);
 
         Video.JE_showVGA();
-        Mainint.JE_gammaCorrect(Palette.colors, Config.gammaCorrection); // TODO: 待移植 JE_gammaCorrect
+        Mainint.JE_gammaCorrect(Palette.colors, Config.gammaCorrection);
         Palette.fade_palette(Palette.colors, 50, 0, 255);
 
         if (Sprites.explosionSpriteSheet.data == null)

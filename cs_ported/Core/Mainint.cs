@@ -46,8 +46,20 @@ internal static unsafe partial class Mainint
     // 網路未移植（守則 8），這些請求旗標僅供 isNetworkGame（const false）分支引用。
     public static bool pauseRequest, skipLevelRequest, helpRequest, nortShipRequest;
 
-    /// <summary>對應 newshape.c:JE_gammaCheck —— gamma 校正檢查（gamma 階段尚未移植，維持 no-op）。</summary>
-    public static void JE_gammaCheck() { /* TODO: 待移植 JE_gammaCheck（gamma 校正，另一階段） */ }
+    /// <summary>對應 mainint.c:JE_gammaCheck —— F11 切換 gamma 等級(0-3)、重載調色盤並套用。</summary>
+    public static bool JE_gammaCheck()
+    {
+        bool temp = Keyboard.keysactive[SdlKeys.SDL_SCANCODE_F11];
+        if (temp)
+        {
+            Keyboard.keysactive[SdlKeys.SDL_SCANCODE_F11] = false;
+            Config.gammaCorrection = (byte)((Config.gammaCorrection + 1) % 4);
+            Array.Copy(Palette.palettes[Pcxmast.pcxpal[3 - 1]], Palette.colors, 256);
+            JE_gammaCorrect(Palette.colors, Config.gammaCorrection);
+            Palette.set_palette(Palette.colors, 0, 255);
+        }
+        return temp;
+    }
 
     /// <summary>對應 mainint.c:JE_mainKeyboardInput —— 遊戲中按鍵分派（暫停/選單/說明/作弊碼）。</summary>
     public static void JE_mainKeyboardInput()
@@ -853,7 +865,26 @@ internal static unsafe partial class Mainint
         Keyboard.mouseSetRelative(true);
     }
     public static void JE_handleChat() { /* TODO: 網路聊天（network.c 不移植） */ }
-    public static void JE_gammaCorrect(SDL_Color[] colors, byte gamma) { /* TODO: 待移植 JE_gammaCorrect（gamma 校正） */ }
+    /// <summary>對應 mainint.c:JE_gammaCorrect_func —— 單一色階乘 r 並夾 255。</summary>
+    private static void JE_gammaCorrect_func(ref byte col, float r)
+    {
+        int temp = (int)MathF.Round(col * r, MidpointRounding.AwayFromZero);
+        if (temp > 255)
+            temp = 255;
+        col = (byte)temp;
+    }
+
+    /// <summary>對應 mainint.c:JE_gammaCorrect —— 對整盤 256 色套 gamma(r=1+gamma/10)。</summary>
+    public static void JE_gammaCorrect(SDL_Color[] colorBuffer, byte gamma)
+    {
+        float r = 1 + (float)gamma / 10;
+        for (int x = 0; x < 256; x++)
+        {
+            JE_gammaCorrect_func(ref colorBuffer[x].r, r);
+            JE_gammaCorrect_func(ref colorBuffer[x].g, r);
+            JE_gammaCorrect_func(ref colorBuffer[x].b, r);
+        }
+    }
     /// <summary>對應 backgrnd.c:JE_filterScreen —— 濾鏡淡入淡出 + 全螢幕色相覆蓋 + 爆炸透明亮度。</summary>
     public static unsafe void JE_filterScreen(sbyte col, sbyte int_)
     {
