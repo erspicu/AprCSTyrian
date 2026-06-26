@@ -249,6 +249,180 @@ internal static unsafe partial class Tyrian2
         eventLoc = (ushort)(t - 1);
     }
 
+    /// <summary>敵人砲塔發射敵彈（簡化：default 類型，跳過特殊磁鐵/飛彈 251-255）。對應 JE_drawEnemy 363-545。</summary>
+    public static void enemyTurretFire(int z)
+    {
+        int tempX = Varz.enemy[z].ex, tempY = Varz.enemy[z].ey, ofs = Backgrnd.tempMapXOfs;
+
+        for (int j = 3; j > 0; j--)
+        {
+            if (Varz.enemy[z].freq[j - 1] == 0)
+                continue;
+            int tur = Varz.enemy[z].tur[j - 1];
+            if (--Varz.enemy[z].eshotwait[j - 1] != 0 || tur == 0)
+                continue;
+
+            Varz.enemy[z].eshotwait[j - 1] = Varz.enemy[z].freq[j - 1];
+            if (Config.difficultyLevel > Config.DIFFICULTY_NORMAL)
+            {
+                Varz.enemy[z].eshotwait[j - 1] = (byte)(Varz.enemy[z].eshotwait[j - 1] / 2 + 1);
+                if (Config.difficultyLevel > Config.DIFFICULTY_MANIACAL)
+                    Varz.enemy[z].eshotwait[j - 1] = (byte)(Varz.enemy[z].eshotwait[j - 1] / 2 + 1);
+            }
+
+            if (tur >= 251)
+                continue; // TODO: 特殊磁鐵/飛彈型(251-255)
+
+            for (int tempCount = Episodes.weapons[tur].multi; tempCount > 0; tempCount--)
+            {
+                int b2 = -1;
+                for (int bb = 0; bb < VarzConst.ENEMY_SHOT_MAX; bb++)
+                    if (Varz.enemyShotAvail[bb]) { b2 = bb; break; }
+                if (b2 < 0)
+                    return;
+
+                Varz.enemyShotAvail[b2] = false;
+
+                if (Episodes.weapons[tur].sound > 0)
+                {
+                    int si;
+                    do { si = (int)(MtRand.mt_rand() % 8); } while (si == 3);
+                    Varz.soundQueue[si] = Episodes.weapons[tur].sound;
+                }
+
+                if (Varz.enemy[z].aniactive == 2)
+                    Varz.enemy[z].aniactive = 1;
+
+                Varz.enemy[z].eshotmultipos[j - 1]++;
+                if (Varz.enemy[z].eshotmultipos[j - 1] > Episodes.weapons[tur].max)
+                    Varz.enemy[z].eshotmultipos[j - 1] = 1;
+                int tp = Varz.enemy[z].eshotmultipos[j - 1] - 1;
+
+                Varz.enemyShot[b2].sx = (short)(tempX + Episodes.weapons[tur].bx[tp] + ofs);
+                Varz.enemyShot[b2].sy = (short)(tempY + Episodes.weapons[tur].by[tp]);
+                Varz.enemyShot[b2].sdmg = Episodes.weapons[tur].attack[tp];
+                Varz.enemyShot[b2].tx = Episodes.weapons[tur].tx;
+                Varz.enemyShot[b2].ty = Episodes.weapons[tur].ty;
+                Varz.enemyShot[b2].duration = Episodes.weapons[tur].del[tp];
+                Varz.enemyShot[b2].animate = 0;
+                Varz.enemyShot[b2].animax = Episodes.weapons[tur].weapani;
+                Varz.enemyShot[b2].sgr = Episodes.weapons[tur].sg[tp];
+
+                sbyte acc = Episodes.weapons[tur].acceleration, accx = Episodes.weapons[tur].accelerationx;
+                sbyte wsx = Episodes.weapons[tur].sx[tp], wsy = Episodes.weapons[tur].sy[tp];
+                switch (j)
+                {
+                    case 1:
+                        Varz.enemyShot[b2].syc = acc; Varz.enemyShot[b2].sxc = accx;
+                        Varz.enemyShot[b2].sxm = wsx; Varz.enemyShot[b2].sym = wsy;
+                        break;
+                    case 3:
+                        Varz.enemyShot[b2].sxc = (sbyte)-acc; Varz.enemyShot[b2].syc = accx;
+                        Varz.enemyShot[b2].sxm = (short)-wsy; Varz.enemyShot[b2].sym = (short)-wsx;
+                        break;
+                    case 2:
+                        Varz.enemyShot[b2].sxc = acc; Varz.enemyShot[b2].syc = (sbyte)-acc;
+                        Varz.enemyShot[b2].sxm = wsy; Varz.enemyShot[b2].sym = (short)-wsx;
+                        break;
+                }
+
+                if (Episodes.weapons[tur].aim > 0)
+                {
+                    int aim = Episodes.weapons[tur].aim;
+                    if (Config.difficultyLevel > Config.DIFFICULTY_NORMAL)
+                        aim += Config.difficultyLevel - 2;
+
+                    int aimX = (Players.player[0].x + 25) - tempX - ofs - 4;
+                    if (aimX == 0) aimX = 1;
+                    int aimY = Players.player[0].y - tempY;
+                    if (aimY == 0) aimY = 1;
+                    int maxMag = Math.Max(Math.Abs(aimX), Math.Abs(aimY));
+                    Varz.enemyShot[b2].sxm = (short)MathF.Round((float)aimX / maxMag * aim);
+                    Varz.enemyShot[b2].sym = (short)MathF.Round((float)aimY / maxMag * aim);
+                }
+            }
+        }
+    }
+
+    /// <summary>敵彈移動/繪製 + 擊中玩家碰撞。對應 tyrian2.c 1769-1858。</summary>
+    public static void simulateEnemyShots()
+    {
+        var player = Players.player;
+        for (int z = 0; z < VarzConst.ENEMY_SHOT_MAX; z++)
+        {
+            if (Varz.enemyShotAvail[z])
+                continue; // true = 空閒
+
+            Varz.enemyShot[z].sxm += Varz.enemyShot[z].sxc;
+            Varz.enemyShot[z].sx += Varz.enemyShot[z].sxm;
+            if (Varz.enemyShot[z].tx != 0)
+            {
+                if (Varz.enemyShot[z].sx > player[0].x)
+                {
+                    if (Varz.enemyShot[z].sxm > -Varz.enemyShot[z].tx) Varz.enemyShot[z].sxm--;
+                }
+                else if (Varz.enemyShot[z].sxm < Varz.enemyShot[z].tx) Varz.enemyShot[z].sxm++;
+            }
+
+            Varz.enemyShot[z].sym += Varz.enemyShot[z].syc;
+            Varz.enemyShot[z].sy += Varz.enemyShot[z].sym;
+            if (Varz.enemyShot[z].ty != 0)
+            {
+                if (Varz.enemyShot[z].sy > player[0].y)
+                {
+                    if (Varz.enemyShot[z].sym > -Varz.enemyShot[z].ty) Varz.enemyShot[z].sym--;
+                }
+                else if (Varz.enemyShot[z].sym < Varz.enemyShot[z].ty) Varz.enemyShot[z].sym++;
+            }
+
+            if (Varz.enemyShot[z].duration-- == 0 || Varz.enemyShot[z].sy > 190 || Varz.enemyShot[z].sy <= -14 || Varz.enemyShot[z].sx > 275 || Varz.enemyShot[z].sx <= 0)
+            {
+                Varz.enemyShotAvail[z] = true;
+            }
+            else
+            {
+                for (int i = 0; i < (Config.twoPlayerMode ? 2 : 1); ++i)
+                {
+                    if (player[i].is_alive &&
+                        Varz.enemyShot[z].sx > player[i].x - (int)player[i].shot_hit_area_x &&
+                        Varz.enemyShot[z].sx < player[i].x + (int)player[i].shot_hit_area_x &&
+                        Varz.enemyShot[z].sy > player[i].y - (int)player[i].shot_hit_area_y &&
+                        Varz.enemyShot[z].sy < player[i].y + (int)player[i].shot_hit_area_y)
+                    {
+                        int tempX = Varz.enemyShot[z].sx, tempY = Varz.enemyShot[z].sy;
+                        byte dmg = Varz.enemyShot[z].sdmg;
+                        Varz.enemyShotAvail[z] = true;
+                        Varz.JE_setupExplosion(tempX, tempY, 0, 0, false, false);
+
+                        if (player[i].invulnerable_ticks == 0)
+                        {
+                            byte through = Varz.JE_playerDamage(dmg, i);
+                            if (through > 0)
+                            {
+                                player[i].x_velocity += (Varz.enemyShot[z].sxm * through) / 2;
+                                player[i].y_velocity += (Varz.enemyShot[z].sym * through) / 2;
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                if (!Varz.enemyShotAvail[z])
+                {
+                    if (Varz.enemyShot[z].animax != 0)
+                    {
+                        if (++Varz.enemyShot[z].animate >= Varz.enemyShot[z].animax)
+                            Varz.enemyShot[z].animate = 0;
+                    }
+                    if (Varz.enemyShot[z].sgr >= 500)
+                        Sprites.blit_sprite2(Video.VGAScreen, Varz.enemyShot[z].sx, Varz.enemyShot[z].sy, Sprites.spriteSheet12, (uint)(Varz.enemyShot[z].sgr + Varz.enemyShot[z].animate - 500));
+                    else
+                        Sprites.blit_sprite2(Video.VGAScreen, Varz.enemyShot[z].sx, Varz.enemyShot[z].sy, Sprites.spriteSheet8, (uint)(Varz.enemyShot[z].sgr + Varz.enemyShot[z].animate));
+                }
+            }
+        }
+    }
+
     private static float difficultyValue(short value)
     {
         switch ((int)Config.difficultyLevel)

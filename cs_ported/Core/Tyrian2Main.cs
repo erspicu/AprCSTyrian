@@ -61,6 +61,8 @@ internal static unsafe partial class Tyrian2
 
         for (int i = 0; i < 100; ++i)
             Varz.enemyAvail[i] = 1; // 所有敵人槽初始為空（對應 memset enemyAvail,1）
+        for (int i = 0; i < VarzConst.ENEMY_SHOT_MAX; ++i)
+            Varz.enemyShotAvail[i] = true; // 所有敵彈槽初始為空
 
         // 護盾/裝甲初值（對應 tyrian2.c 880-888）
         for (int i = 0; i < 2; ++i)
@@ -164,6 +166,9 @@ internal static unsafe partial class Tyrian2
                     if (idx > 0 && idx != 999)
                         Sprites.blit_sprite2(Video.VGAScreen, Varz.enemy[z].ex + Backgrnd.tempMapXOfs, Varz.enemy[z].ey, Varz.enemy[z].sprite2s, (uint)idx);
                 }
+
+                // 砲塔發射敵彈
+                Tyrian2.enemyTurretFire(z);
             }
 
             // === 簡化玩家控制（完整 JE_playerMovement 待移植：射擊/僚機/選項/爆炸/復活）===
@@ -249,6 +254,9 @@ internal static unsafe partial class Tyrian2
 
             // 繪製玩家船艦（對應 JE_playerMovement 的 shipGr blit）
             Sprites.blit_sprite2x2(Video.VGAScreen, player[0].x - 5, player[0].y - 7, Varz.shipGrPtr, Varz.shipGr);
+
+            // === 敵彈：移動/繪製 + 擊中玩家 ===
+            Tyrian2.simulateEnemyShots();
 
             // === HUD：護盾/裝甲 bar + 分數/特殊武器/超級炸彈 ===
             Varz.JE_drawShield();

@@ -57,6 +57,7 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       +JE_helpBox/HBox)；`Menus` 文字占位（已驗證："Episode 1: Escape"/"Start New Game" 正確）
 - [x] **命令列參數**：`ArgParse`(arg_parse.c getopt 重實作)+`Params`(params.c JE_paramCheck)+`Xmas`(占位)；
       網路選項視為不支援；TyrianGame/Program 串接 argv
+- [x] **敵人發射敵彈 + 敵彈↔玩家碰撞**：enemyTurretFire(砲塔→weapons 建敵彈+瞄準玩家) + simulateEnemyShots(移動/homing/繪製/擊中) + JE_playerDamage(護盾→裝甲→死亡爆炸)；實機驗證 shield 20→15
 - [x] **HUD**：`Mainint.JE_inGameDisplays`(分數cash/特殊武器圖示/超級炸彈) + 護盾/裝甲 bar(JE_drawShield/Armor)；街機 lives 待 lives 指標
 - [x] **子彈↔敵人碰撞**：JE_main player_shot_move_and_draw + box collision(同原版 25/29/13/15) → armorleft 扣血/死亡爆炸/計分(cash+evalue)/回收；dmg 99(冰)/250+(無限) 處理
 - [x] **JE_makeEnemy 敵人工廠**：由 enemyDat 初始化敵人(60+ 欄位)；sprite2s 改值複製/enemydatofs 改索引(C 指標→C# 託管陣列)
