@@ -35,10 +35,12 @@ public sealed class TyrianGame
                 Palette.JE_loadPals();
                 Sprites.JE_loadMainShapeTables("tyrian.shp"); // 字型/介面/option sprites
 
-                // 音訊：初始化混音器 + 載入音效（音樂 OPL 暫靜音）。
+                // 音訊：初始化混音器 + 載入音效 + 播放 OPL 音樂。
                 Loudness.init_audio();
                 Loudness.set_volume(255, 255);
                 Nortsong.loadSndFile(false);
+                Loudness.load_music();
+                Loudness.play_song(0); // 播放第一首（OPL FM 合成）
             }
             else
                 BuildSyntheticPalette();
