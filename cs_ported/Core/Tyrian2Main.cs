@@ -137,70 +137,8 @@ internal static unsafe partial class Tyrian2
             Backgrnd.draw_background_2(Video.VGAScreen);
             Backgrnd.draw_background_3(Video.VGAScreen);
 
-            // === 簡化敵人更新/繪製（完整 JE_drawEnemy 445 行待移植：homing/彈跳/砲塔發射/size/傷害）===
-            for (int z = 0; z < 100; z++)
-            {
-                if (Varz.enemyAvail[z] == 1)
-                    continue; // 空槽
-
-                // 動畫循環
-                if (Varz.enemy[z].aniactive == 1)
-                {
-                    Varz.enemy[z].enemycycle++;
-                    if (Varz.enemy[z].enemycycle == Varz.enemy[z].animax)
-                        Varz.enemy[z].aniactive = Varz.enemy[z].aniwhenfire;
-                    else if (Varz.enemy[z].enemycycle > Varz.enemy[z].ani)
-                        Varz.enemy[z].enemycycle = Varz.enemy[z].animin;
-                }
-                if (Varz.enemy[z].enemycycle < 1)
-                    Varz.enemy[z].enemycycle = 1;
-
-                // homing 加速：朝玩家調整速度（對應 JE_drawEnemy 188-214）
-                if (Varz.enemy[z].xaccel != 0 && (uint)Varz.enemy[z].xaccel - 89u > MtRand.mt_rand() % 11)
-                {
-                    if (player[0].x > Varz.enemy[z].ex)
-                    {
-                        if (Varz.enemy[z].exc < Varz.enemy[z].xaccel - 89) Varz.enemy[z].exc++;
-                    }
-                    else if (Varz.enemy[z].exc >= 0 || -Varz.enemy[z].exc < Varz.enemy[z].xaccel - 89)
-                    {
-                        Varz.enemy[z].exc--;
-                    }
-                }
-                if (Varz.enemy[z].yaccel != 0 && (uint)Varz.enemy[z].yaccel - 89u > MtRand.mt_rand() % 11)
-                {
-                    if (player[0].y > Varz.enemy[z].ey)
-                    {
-                        if (Varz.enemy[z].eyc < Varz.enemy[z].yaccel - 89) Varz.enemy[z].eyc++;
-                    }
-                    else if (Varz.enemy[z].eyc >= 0 || -Varz.enemy[z].eyc < Varz.enemy[z].yaccel - 89)
-                    {
-                        Varz.enemy[z].eyc--;
-                    }
-                }
-
-                // 移動（速度 + 隨背景下移）
-                Varz.enemy[z].ex += Varz.enemy[z].exc;
-                Varz.enemy[z].ey += (short)(Varz.enemy[z].eyc + Backgrnd.backMove);
-
-                // 回收出界敵人
-                if (Varz.enemy[z].ey > 200 || Varz.enemy[z].ex < -40 || Varz.enemy[z].ex > 320)
-                {
-                    Varz.enemyAvail[z] = 1;
-                    continue;
-                }
-
-                // 繪製敵人 sprite
-                if (Varz.enemy[z].sprite2s.data != null)
-                {
-                    int idx = Varz.enemy[z].egr[Varz.enemy[z].enemycycle - 1];
-                    if (idx > 0 && idx != 999)
-                        Sprites.blit_sprite2(Video.VGAScreen, Varz.enemy[z].ex + Backgrnd.tempMapXOfs, Varz.enemy[z].ey, Varz.enemy[z].sprite2s, (uint)idx);
-                }
-
-                // 砲塔發射敵彈
-                Tyrian2.enemyTurretFire(z);
-            }
+            // === 敵人更新/繪製（homing/動畫/size 多格/立方加速/彈跳/砲塔發射）===
+            Tyrian2.JE_updateEnemies();
 
             // === 簡化玩家控制（完整 JE_playerMovement 待移植：射擊/僚機/選項/爆炸/復活）===
             const int spd = 2; // CURRENT_KEY_SPEED=1，骨架略加快以利操作

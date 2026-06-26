@@ -249,6 +249,179 @@ internal static unsafe partial class Tyrian2
         eventLoc = (ushort)(t - 1);
     }
 
+    private static void blit_enemy(int i, int xofs, int yofs, int spriteOfs)
+    {
+        if (Varz.enemy[i].sprite2s.data == null)
+            return;
+        int x = Varz.enemy[i].ex + xofs + Backgrnd.tempMapXOfs;
+        int y = Varz.enemy[i].ey + yofs;
+        int index = Varz.enemy[i].egr[Varz.enemy[i].enemycycle - 1] + spriteOfs;
+        if (Varz.enemy[i].filter != 0)
+            Sprites.blit_sprite2_filter(Video.VGAScreen, x, y, Varz.enemy[i].sprite2s, (uint)index, Varz.enemy[i].filter);
+        else
+            Sprites.blit_sprite2(Video.VGAScreen, x, y, Varz.enemy[i].sprite2s, (uint)index);
+    }
+
+    /// <summary>
+    /// 敵人更新/繪製（對應 JE_drawEnemy 的核心：homing + 動畫 + size 多格繪製 + 立方加速 + 移動 + 彈跳 + 砲塔發射）。
+    /// 簡化省略：傷害閃白 filter 動畫、特殊砲塔型、boss、enemyOnScreen 計數。
+    /// </summary>
+    public static void JE_updateEnemies()
+    {
+        var player = Players.player;
+        Backgrnd.tempBackMove = Backgrnd.backMove;
+
+        for (int z = 0; z < 100; z++)
+        {
+            if (Varz.enemyAvail[z] == 1)
+                continue;
+
+            Varz.enemy[z].mapoffset = Backgrnd.tempMapXOfs;
+
+            // homing 加速
+            if (Varz.enemy[z].xaccel != 0 && (uint)Varz.enemy[z].xaccel - 89u > MtRand.mt_rand() % 11)
+            {
+                if (player[0].x > Varz.enemy[z].ex)
+                {
+                    if (Varz.enemy[z].exc < Varz.enemy[z].xaccel - 89) Varz.enemy[z].exc++;
+                }
+                else if (Varz.enemy[z].exc >= 0 || -Varz.enemy[z].exc < Varz.enemy[z].xaccel - 89)
+                    Varz.enemy[z].exc--;
+            }
+            if (Varz.enemy[z].yaccel != 0 && (uint)Varz.enemy[z].yaccel - 89u > MtRand.mt_rand() % 11)
+            {
+                if (player[0].y > Varz.enemy[z].ey)
+                {
+                    if (Varz.enemy[z].eyc < Varz.enemy[z].yaccel - 89) Varz.enemy[z].eyc++;
+                }
+                else if (Varz.enemy[z].eyc >= 0 || -Varz.enemy[z].eyc < Varz.enemy[z].yaccel - 89)
+                    Varz.enemy[z].eyc--;
+            }
+
+            bool gone = false;
+
+            int exAbs = Varz.enemy[z].ex + Backgrnd.tempMapXOfs;
+            if (exAbs > -29 && exAbs < 300)
+            {
+                if (Varz.enemy[z].aniactive == 1)
+                {
+                    Varz.enemy[z].enemycycle++;
+                    if (Varz.enemy[z].enemycycle == Varz.enemy[z].animax)
+                        Varz.enemy[z].aniactive = Varz.enemy[z].aniwhenfire;
+                    else if (Varz.enemy[z].enemycycle > Varz.enemy[z].ani)
+                        Varz.enemy[z].enemycycle = Varz.enemy[z].animin;
+                }
+                if (Varz.enemy[z].enemycycle < 1)
+                    Varz.enemy[z].enemycycle = 1;
+
+                if (Varz.enemy[z].egr[Varz.enemy[z].enemycycle - 1] == 999)
+                {
+                    gone = true;
+                }
+                else
+                {
+                    if (Varz.enemy[z].size == 1) // 2x2 敵人
+                    {
+                        if (Varz.enemy[z].ey > -13)
+                        {
+                            blit_enemy(z, -6, -7, 0);
+                            blit_enemy(z, 6, -7, 1);
+                        }
+                        if (Varz.enemy[z].ey > -26 && Varz.enemy[z].ey < 182)
+                        {
+                            blit_enemy(z, -6, 7, 19);
+                            blit_enemy(z, 6, 7, 20);
+                        }
+                    }
+                    else
+                    {
+                        if (Varz.enemy[z].ey > -13)
+                            blit_enemy(z, 0, 0, 0);
+                    }
+                    Varz.enemy[z].filter = 0;
+                }
+            }
+
+            if (!gone)
+            {
+                // 立方加速（curved movement）
+                if (Varz.enemy[z].excc != 0 && --Varz.enemy[z].exccw <= 0)
+                {
+                    if (Varz.enemy[z].exc == Varz.enemy[z].exrev)
+                    {
+                        Varz.enemy[z].excc = (sbyte)-Varz.enemy[z].excc;
+                        Varz.enemy[z].exrev = (sbyte)-Varz.enemy[z].exrev;
+                        Varz.enemy[z].exccadd = (short)-Varz.enemy[z].exccadd;
+                    }
+                    else
+                    {
+                        Varz.enemy[z].exc += (sbyte)Varz.enemy[z].exccadd;
+                        Varz.enemy[z].exccw = (sbyte)Varz.enemy[z].exccwmax;
+                        if (Varz.enemy[z].exc == Varz.enemy[z].exrev)
+                        {
+                            Varz.enemy[z].excc = (sbyte)-Varz.enemy[z].excc;
+                            Varz.enemy[z].exrev = (sbyte)-Varz.enemy[z].exrev;
+                            Varz.enemy[z].exccadd = (short)-Varz.enemy[z].exccadd;
+                        }
+                    }
+                }
+                if (Varz.enemy[z].eycc != 0 && --Varz.enemy[z].eyccw <= 0)
+                {
+                    if (Varz.enemy[z].eyc == Varz.enemy[z].eyrev)
+                    {
+                        Varz.enemy[z].eycc = (sbyte)-Varz.enemy[z].eycc;
+                        Varz.enemy[z].eyrev = (sbyte)-Varz.enemy[z].eyrev;
+                        Varz.enemy[z].eyccadd = (short)-Varz.enemy[z].eyccadd;
+                    }
+                    else
+                    {
+                        Varz.enemy[z].eyc += (sbyte)Varz.enemy[z].eyccadd;
+                        Varz.enemy[z].eyccw = (sbyte)Varz.enemy[z].eyccwmax;
+                        if (Varz.enemy[z].eyc == Varz.enemy[z].eyrev)
+                        {
+                            Varz.enemy[z].eycc = (sbyte)-Varz.enemy[z].eycc;
+                            Varz.enemy[z].eyrev = (sbyte)-Varz.enemy[z].eyrev;
+                            Varz.enemy[z].eyccadd = (short)-Varz.enemy[z].eyccadd;
+                        }
+                    }
+                }
+
+                Varz.enemy[z].ey += Varz.enemy[z].fixedmovey;
+                Varz.enemy[z].ex += Varz.enemy[z].exc;
+                if (Varz.enemy[z].ex < -80 || Varz.enemy[z].ex > 340)
+                    gone = true;
+                else
+                {
+                    Varz.enemy[z].ey += Varz.enemy[z].eyc;
+                    if (Varz.enemy[z].ey < -112 || Varz.enemy[z].ey > 190)
+                        gone = true;
+                    else
+                    {
+                        if (Varz.enemy[z].ex <= Varz.enemy[z].xminbounce || Varz.enemy[z].ex >= Varz.enemy[z].xmaxbounce)
+                            Varz.enemy[z].exc = (sbyte)-Varz.enemy[z].exc;
+                        if (Varz.enemy[z].ey <= Varz.enemy[z].yminbounce || Varz.enemy[z].ey >= Varz.enemy[z].ymaxbounce)
+                            Varz.enemy[z].eyc = (sbyte)-Varz.enemy[z].eyc;
+
+                        if (Varz.enemy[z].scoreitem)
+                        {
+                            if (Varz.enemy[z].ex < -5) Varz.enemy[z].ex++;
+                            if (Varz.enemy[z].ex > 245) Varz.enemy[z].ex--;
+                        }
+                        Varz.enemy[z].ey += (short)Backgrnd.tempBackMove;
+                    }
+                }
+            }
+
+            if (gone)
+            {
+                Varz.enemyAvail[z] = 1;
+                continue;
+            }
+
+            enemyTurretFire(z);
+        }
+    }
+
     /// <summary>敵人砲塔發射敵彈（簡化：default 類型，跳過特殊磁鐵/飛彈 251-255）。對應 JE_drawEnemy 363-545。</summary>
     public static void enemyTurretFire(int z)
     {
