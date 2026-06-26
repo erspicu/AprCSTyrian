@@ -179,7 +179,7 @@ internal static unsafe partial class Tyrian2
     }
 
     private static void load_next_demo() { /* TODO: demo 載入 */ }
-    private static uint JE_totalScore(int p) => Players.player[p].cash; // 近似（JE_getValue 未移植）
+    private static uint JE_totalScore(int p) => Mainint.JE_totalScore(p); // 現金 + 各裝備售價
 
     public static void JE_loadMap()
     {

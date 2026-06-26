@@ -111,8 +111,8 @@ internal static unsafe partial class Mainint
             else
             {
                 // single player highscore includes cost of upgrades
-                // 註：JE_getValue 尚未移植，沿用 Tyrian2Map.JE_totalScore 的近似（僅 cash）。
-                temp_score = (int)Players.player[0].cash;
+                // single player highscore includes cost of upgrades
+                temp_score = (int)JE_totalScore(0);
             }
 
             int slot;
@@ -1465,6 +1465,60 @@ internal static unsafe partial class Mainint
         uint temp = 0;
         for (; power > 0; power--) temp += power;
         return base_cost * temp;
+    }
+
+    /// <summary>對應 mainint.c:JE_getValue —— 物品轉售價值。</summary>
+    public static int JE_getValue(byte itemType, ushort itemNum)
+    {
+        long value = 0;
+
+        switch (itemType)
+        {
+        case 2:
+            value = Episodes.ships[itemNum].cost;
+            break;
+        case 3:
+        case 4:
+            long base_value = Episodes.weaponPort[itemNum].cost;
+
+            // if two-player, use first player's front and second player's rear weapon
+            uint port = (uint)(itemType - 3);
+            uint item_power = (uint)(Players.player[Config.twoPlayerMode ? (int)port : 0].items.weapon[(int)port].power - 1);
+
+            value = base_value;
+            for (uint i = 1; i <= item_power; ++i)
+                value += weapon_upgrade_cost(base_value, i);
+            break;
+        case 5:
+            value = Episodes.shields[itemNum].cost;
+            break;
+        case 6:
+            value = Episodes.powerSys[itemNum].cost;
+            break;
+        case 7:
+        case 8:
+            value = Episodes.options[itemNum].cost;
+            break;
+        }
+
+        return (int)value;
+    }
+
+    /// <summary>對應 mainint.c:JE_totalScore —— 總分 = 現金 + 各裝備轉售價值。</summary>
+    public static uint JE_totalScore(int p)
+    {
+        ref var this_player = ref Players.player[p];
+        uint temp = this_player.cash;
+
+        temp += (uint)JE_getValue(2, this_player.items.ship);
+        temp += (uint)JE_getValue(3, this_player.items.weapon[Players.FRONT_WEAPON].id);
+        temp += (uint)JE_getValue(4, this_player.items.weapon[Players.REAR_WEAPON].id);
+        temp += (uint)JE_getValue(5, this_player.items.shield);
+        temp += (uint)JE_getValue(6, this_player.items.generator);
+        temp += (uint)JE_getValue(7, this_player.items.sidekick[Players.LEFT_SIDEKICK]);
+        temp += (uint)JE_getValue(8, this_player.items.sidekick[Players.RIGHT_SIDEKICK]);
+
+        return temp;
     }
 
     /// <summary>對應 mainint.c:JE_getCost —— 物品價格（武器另計算升/降級成本）。</summary>
