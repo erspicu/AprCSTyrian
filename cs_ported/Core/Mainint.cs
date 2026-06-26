@@ -1759,7 +1759,7 @@ internal static unsafe partial class Mainint
     /// <summary>mainint.c: button[4] — 開火 / 左火 / 右火 / 模式切換。</summary>
     public static readonly bool[] button = new bool[4];
 
-    /// <summary>對應 mainint.c:JE_operation。目前僅移植 load 路徑；存檔命名對話框(performSave) 待 in-game 選單。</summary>
+    /// <summary>對應 mainint.c:JE_operation —— 存檔槽操作:load 路徑 + 存檔命名輸入對話框(performSave)。</summary>
     public static void JE_operation(byte slot)
     {
         if (!performSave)
@@ -1771,7 +1771,123 @@ internal static unsafe partial class Mainint
                 Varz.gameLoaded = true;
             }
         }
-        // else: 存檔命名輸入對話框（performSave==true，由 in-game 選單觸發）待後續移植
+        else if (slot % 11 != 0)
+        {
+            byte[] stemp = new byte[21];
+            for (int k = 0; k < 14; k++) stemp[k] = (byte)' ';
+            var nm = Config.saveFiles[slot - 1].name;
+            int nmlen = 0; while (nmlen < nm.Length && nm[nmlen] != 0) nmlen++;
+            for (int k = 0; k < nmlen; k++) stemp[k] = nm[k];
+            Varz.temp = 14;
+            while (stemp[Varz.temp - 1] == (byte)' ' && (--Varz.temp) != 0) { }
+
+            byte flash = 8 * 16 + 10;
+
+            Vga256d.JE_barShade(Video.VGAScreen, 65, 55, 255, 155);
+
+            // SDL_StartTextInput()：此 port 文字輸入恆由事件迴圈處理（無操作）
+
+            bool quit = false;
+            while (!quit)
+            {
+                Nortsong.setFrameCount(1);
+
+                Sprites.blit_sprite(Video.VGAScreen, 50, 50, Sprites.OPTION_SHAPES, 35);  // message box
+
+                Fonthand.JE_textShade(Video.VGAScreen, 60, 55, Helptext.miscText[1 - 1], 11, 4, Fonthand.DARKEN);
+                Fonthand.JE_textShade(Video.VGAScreen, 70, 70, CStr(Config.levelName), 11, 4, Fonthand.DARKEN);
+
+                int text_x = 54 + 45 - (Fonthand.JE_textWidth(Helptext.miscText[9], (uint)Sprites.FONT_SHAPES) / 2);
+                Fonthand.JE_outTextAdjust(Video.VGAScreen, text_x, 128, Helptext.miscText[9], 15, -5, (uint)Sprites.FONT_SHAPES, true);
+
+                text_x = 149 + 45 - (Fonthand.JE_textWidth(Helptext.miscText[10], (uint)Sprites.FONT_SHAPES) / 2);
+                Fonthand.JE_outTextAdjust(Video.VGAScreen, text_x, 128, Helptext.miscText[10], 15, -5, (uint)Sprites.FONT_SHAPES, true);
+
+                // TODO: Rework this so that cursor blink timing is independent of input.
+                while (true)
+                {
+                    flash = (byte)((flash == 8 * 16 + 10) ? 8 * 16 + 2 : 8 * 16 + 10);
+                    Varz.temp3 = (byte)((Varz.temp3 == 6) ? 2 : 6);
+
+                    string tempStr = Helptext.miscText[2 - 1] + System.Text.Encoding.ASCII.GetString(stemp, 0, Varz.temp);
+                    Fonthand.JE_outText(Video.VGAScreen, 65, 89, tempStr, 8, 3);
+                    Varz.tempW = (ushort)(65 + Fonthand.JE_textWidth(tempStr, (uint)Sprites.TINY_FONT));
+                    Vga256d.JE_barShade(Video.VGAScreen, Varz.tempW + 2, 90, Varz.tempW + 6, 95);
+                    Vga256d.fill_rectangle_xy(Video.VGAScreen, Varz.tempW + 1, 89, Varz.tempW + 5, 94, flash);
+
+                    for (int i = 0; i < 14; i++)
+                    {
+                        Mouse.JE_mouseStart();
+                        Video.JE_showVGA();
+                        Mouse.JE_mouseReplace();
+
+                        Keyboard.waitUntilElapsed();
+
+                        if (Keyboard.hasInput(InputFlags.INPUT_NO_MOTION))
+                            break;
+
+                        Nortsong.setFrameCount(1);
+                    }
+
+                    if (Keyboard.hasInput(InputFlags.INPUT_NO_MOTION))
+                        break;
+                }
+
+                if (Keyboard.mouseGetInput(InputFlags.INPUT_NO_MOTION, out MouseInput mouseInput))
+                {
+                    if (mouseInput.x > 56 && mouseInput.x < 142 &&
+                        mouseInput.y > 123 && mouseInput.y < 149)
+                    {
+                        quit = true;
+                        Config.JE_saveGame(slot, CStr(stemp));
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+                    }
+                    else if (mouseInput.x > 151 && mouseInput.x < 237 &&
+                             mouseInput.y > 123 && mouseInput.y < 149)
+                    {
+                        quit = true;
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING);
+                    }
+                }
+                else if (Keyboard.keyboardGetInput(out KeyboardInput keyboardInput))
+                {
+                    switch (keyboardInput.scancode)
+                    {
+                        case SdlKeys.SDL_SCANCODE_BACKSPACE:
+                        case SdlKeys.SDL_SCANCODE_DELETE:
+                            if (Varz.temp > 0)
+                            {
+                                Varz.temp -= 1;
+                                stemp[Varz.temp] = (byte)' ';
+                                Nortsong.JE_playSampleNum((byte)Sndmast.S_CLICK);
+                            }
+                            break;
+                        case SdlKeys.SDL_SCANCODE_ESCAPE:
+                            quit = true;
+                            Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING);
+                            break;
+                        case SdlKeys.SDL_SCANCODE_RETURN:
+                            quit = true;
+                            Config.JE_saveGame(slot, CStr(stemp));
+                            Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+                            break;
+                        default:
+                            break;
+                    }
+
+                    byte ch = keyboardInput.ch;
+                    if ((ch == (byte)' ' || Fonthand.fontMap[ch] != -1) &&
+                        Varz.temp < 14)
+                    {
+                        stemp[Varz.temp] = ch;
+                        Varz.temp += 1;
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                    }
+                }
+            }
+
+            // SDL_StopTextInput()
+        }
     }
 
     public static bool JE_loadScreen()
