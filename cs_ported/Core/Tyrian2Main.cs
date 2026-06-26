@@ -62,6 +62,13 @@ internal static unsafe partial class Tyrian2
         for (int i = 0; i < 100; ++i)
             Varz.enemyAvail[i] = 1; // 所有敵人槽初始為空（對應 memset enemyAvail,1）
 
+        // 護盾/裝甲初值（對應 tyrian2.c 880-888）
+        for (int i = 0; i < 2; ++i)
+        {
+            player[i].shield = Episodes.shields[player[i].items.shield].mpwr;
+            player[i].shield_max = player[i].shield * 2;
+        }
+
         eventLoc = 1;
         curLoc = 0;
         Backgrnd.backMove = 1;
@@ -242,6 +249,11 @@ internal static unsafe partial class Tyrian2
 
             // 繪製玩家船艦（對應 JE_playerMovement 的 shipGr blit）
             Sprites.blit_sprite2x2(Video.VGAScreen, player[0].x - 5, player[0].y - 7, Varz.shipGrPtr, Varz.shipGr);
+
+            // === HUD：護盾/裝甲 bar + 分數/特殊武器/超級炸彈 ===
+            Varz.JE_drawShield();
+            Varz.JE_drawArmor();
+            Mainint.JE_inGameDisplays();
 
             Video.JE_showVGA();
             Nortsong.delayUntilElapsed();

@@ -30,6 +30,33 @@ internal static unsafe partial class Mainint
 
     public static bool performSave;
 
+    /// <summary>對應 mainint.c:JE_inGameDisplays —— 遊戲內 HUD（分數/特殊武器/超級炸彈）。街機 lives 待 lives 指標移植。</summary>
+    public static void JE_inGameDisplays()
+    {
+        var player = Players.player;
+
+        for (int i = 0; i < ((Config.twoPlayerMode && !Config.galagaMode) ? 2 : 1); ++i)
+            Fonthand.JE_textShade(Video.VGAScreen, 30 + 200 * i, 175, $"{player[i].cash}", 2, 4, Fonthand.FULL_SHADE);
+
+        if (player[0].items.special > 0)
+            Sprites.blit_sprite2x2(Video.VGAScreen, 25, 1, Sprites.spriteSheet10, Episodes.special[player[0].items.special].itemgraphic);
+
+        // TODO: 街機/雙人模式 lives 顯示（需 player.lives 指標別名移植）
+
+        for (int i = 0; i < 2; ++i)
+        {
+            int x = (i == 0) ? 30 : 270;
+            for (uint j = player[i].superbombs; j > 0; --j)
+            {
+                Sprites.blit_sprite2(Video.VGAScreen, x, 160, Sprites.spriteSheet9, 304);
+                x += (i == 0) ? 12 : -12;
+            }
+        }
+
+        if (Config.youAreCheating)
+            Fonthand.JE_outText(Video.VGAScreen, 90, 170, "Cheaters always prosper.", 3, 4);
+    }
+
     /// <summary>mainint.c: button[4] — 開火 / 左火 / 右火 / 模式切換。</summary>
     public static readonly bool[] button = new bool[4];
 
