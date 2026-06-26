@@ -37,17 +37,201 @@ internal static unsafe partial class Mainint
     // 以下為 JE_main 逐行移植所需、但尚未移植之函式的「空殼」（no-op），
     // 讓主迴圈可編譯。實際行為待日後填入；呼叫點皆受對應旗標守護（多數情況不會觸發）。
     // ===========================================================================
-    public static void JE_checkSmoothies() { /* TODO: 待移植 JE_checkSmoothies（smoothie/濾鏡判定，設 anySmoothies） */ }
+    /// <summary>對應 backgrnd.c:JE_checkSmoothies —— 依 processorType 決定是否啟用任何 smoothie 濾鏡。</summary>
+    public static void JE_checkSmoothies()
+    {
+        Backgrnd.anySmoothies = (Config.processorType > 2 && (Config.smoothies[1 - 1] || Config.smoothies[2 - 1])) || (Config.processorType > 1 && (Config.smoothies[3 - 1] || Config.smoothies[4 - 1] || Config.smoothies[5 - 1]));
+    }
     public static void JE_mainKeyboardInput() { /* TODO: 待移植 JE_mainKeyboardInput（遊戲中鍵盤：暫停/作弊鍵） */ }
     public static void JE_pauseGame() { /* TODO: 待移植 JE_pauseGame（暫停畫面） */ }
     public static void JE_doInGameSetup() { /* TODO: 待移植 JE_doInGameSetup（遊戲中設定選單） */ }
     public static void JE_handleChat() { /* TODO: 網路聊天（network.c 不移植） */ }
     public static void JE_gammaCorrect(SDL_Color[] colors, byte gamma) { /* TODO: 待移植 JE_gammaCorrect（gamma 校正） */ }
-    public static void JE_filterScreen(sbyte filter, sbyte brightness) { /* TODO: 待移植 JE_filterScreen（螢幕濾鏡/亮度） */ }
-    public static void iced_blur_filter(SDL_Surface dst, SDL_Surface src) { /* TODO: 待移植 iced_blur_filter（濾鏡） */ }
-    public static void lava_filter(SDL_Surface dst, SDL_Surface src) { /* TODO: 待移植 lava_filter（濾鏡） */ }
-    public static void water_filter(SDL_Surface dst, SDL_Surface src) { /* TODO: 待移植 water_filter（濾鏡） */ }
-    public static void blur_filter(SDL_Surface dst, SDL_Surface src) { /* TODO: 待移植 blur_filter（濾鏡） */ }
+    /// <summary>對應 backgrnd.c:JE_filterScreen —— 濾鏡淡入淡出 + 全螢幕色相覆蓋 + 爆炸透明亮度。</summary>
+    public static unsafe void JE_filterScreen(sbyte col, sbyte int_)
+    {
+        byte* s;
+        int x, y;
+        uint temp;
+
+        if (Config.filterFade)
+        {
+            Config.levelBrightness += Config.levelBrightnessChg;
+            if ((Config.filterFadeStart && Config.levelBrightness < -14) || Config.levelBrightness > 14)
+            {
+                Config.levelBrightnessChg = (sbyte)-Config.levelBrightnessChg;
+                Config.filterFadeStart = false;
+                Config.levelFilter = Config.levelFilterNew;
+            }
+            if (!Config.filterFadeStart && Config.levelBrightness == 0)
+            {
+                Config.filterFade = false;
+                Config.levelBrightness = -99;
+            }
+        }
+
+        if (col != -99 && Config.filtrationAvail)
+        {
+            s = Video.VGAScreen.pixels;
+            s += 24;
+
+            col = (sbyte)(col << 4);
+
+            for (y = 184; y != 0; y--)
+            {
+                for (x = 264; x != 0; x--)
+                {
+                    *s = (byte)(col | (*s & 0x0f));
+                    s++;
+                }
+                s += Video.VGAScreen.pitch - 264;
+            }
+        }
+
+        if (int_ != -99 && Config.explosionTransparent)
+        {
+            s = Video.VGAScreen.pixels;
+            s += 24;
+
+            for (y = 184; y != 0; y--)
+            {
+                for (x = 264; x != 0; x--)
+                {
+                    temp = (uint)((*s & 0x0f) + int_);
+                    *s = (byte)((*s & 0xf0) | (temp >= 0x1f ? 0 : (temp >= 0x0f ? 0x0f : temp)));
+                    s++;
+                }
+                s += Video.VGAScreen.pitch - 264;
+            }
+        }
+    }
+
+    /// <summary>對應 backgrnd.c:lava_filter —— 熔岩波動濾鏡（紅色相，上下取樣平均，含 waver 位移）。</summary>
+    public static unsafe void lava_filter(SDL_Surface dst, SDL_Surface src)
+    {
+        int dst_pitch = dst.pitch;
+        byte* dst_pixel = dst.pixels + (185 * dst_pitch);
+        byte* dst_pixel_ll = dst.pixels;
+
+        int src_pitch = src.pitch;
+        byte* src_pixel = src.pixels + (185 * src.pitch);
+        byte* src_pixel_ll = src.pixels;
+
+        int w = 320 * 185 - 1;
+
+        for (int y = 185 - 1; y >= 0; --y)
+        {
+            dst_pixel -= (dst_pitch - 320);
+            src_pixel -= (src_pitch - 320);
+
+            for (int x = 320 - 1; x >= 0; x -= 8)
+            {
+                int waver = Math.Abs(((w >> 9) & 0x0f) - 8) - 1;
+                w -= 8;
+
+                for (int xi = 8 - 1; xi >= 0; --xi)
+                {
+                    --dst_pixel;
+                    --src_pixel;
+
+                    int value = 0;
+                    if (src_pixel + waver >= src_pixel_ll)
+                        value += (*(src_pixel + waver) & 0x0f) * 2;
+                    value += *(dst_pixel + waver + dst_pitch) & 0x0f;
+                    if (dst_pixel + waver - dst_pitch >= dst_pixel_ll)
+                        value += *(dst_pixel + waver - dst_pitch) & 0x0f;
+
+                    *dst_pixel = (byte)((value / 4) | 0x70);
+                }
+            }
+        }
+    }
+
+    /// <summary>對應 backgrnd.c:water_filter —— 水面濾鏡（非藍直接複製，否則與下方取樣平均、套 smoothie 色相）。</summary>
+    public static unsafe void water_filter(SDL_Surface dst, SDL_Surface src)
+    {
+        byte hue = (byte)(Backgrnd.smoothie_data[1] << 4);
+
+        int dst_pitch = dst.pitch;
+        byte* dst_pixel = dst.pixels + (185 * dst_pitch);
+
+        byte* src_pixel = src.pixels + (185 * src.pitch);
+
+        int w = 320 * 185 - 1;
+
+        for (int y = 185 - 1; y >= 0; --y)
+        {
+            dst_pixel -= (dst_pitch - 320);
+            src_pixel -= (src.pitch - 320);
+
+            for (int x = 320 - 1; x >= 0; x -= 8)
+            {
+                int waver = Math.Abs(((w >> 10) & 0x07) - 4) - 1;
+                w -= 8;
+
+                for (int xi = 8 - 1; xi >= 0; --xi)
+                {
+                    --dst_pixel;
+                    --src_pixel;
+
+                    if ((*src_pixel & 0x30) == 0)
+                    {
+                        *dst_pixel = *src_pixel;
+                    }
+                    else
+                    {
+                        int value = *src_pixel & 0x0f;
+                        value += *(dst_pixel + waver + dst_pitch) & 0x0f;
+                        *dst_pixel = (byte)((value / 2) | hue);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>對應 backgrnd.c:iced_blur_filter —— 冰藍模糊（來源與目標 value 取平均，色相 0x80）。</summary>
+    public static unsafe void iced_blur_filter(SDL_Surface dst, SDL_Surface src)
+    {
+        byte* dst_pixel = dst.pixels;
+        byte* src_pixel = src.pixels;
+
+        for (int y = 0; y < 184; ++y)
+        {
+            for (int x = 0; x < 320; ++x)
+            {
+                int value = (*src_pixel & 0x0f) + (*dst_pixel & 0x0f);
+                *dst_pixel = (byte)((value / 2) | 0x80);
+
+                ++dst_pixel;
+                ++src_pixel;
+            }
+
+            dst_pixel += (dst.pitch - 320);
+            src_pixel += (src.pitch - 320);
+        }
+    }
+
+    /// <summary>對應 backgrnd.c:blur_filter —— 一般模糊（value 取平均，色相取來源高 nibble）。</summary>
+    public static unsafe void blur_filter(SDL_Surface dst, SDL_Surface src)
+    {
+        byte* dst_pixel = dst.pixels;
+        byte* src_pixel = src.pixels;
+
+        for (int y = 0; y < 184; ++y)
+        {
+            for (int x = 0; x < 320; ++x)
+            {
+                int value = (*src_pixel & 0x0f) + (*dst_pixel & 0x0f);
+                *dst_pixel = (byte)((value / 2) | (*src_pixel & 0xf0));
+
+                ++dst_pixel;
+                ++src_pixel;
+            }
+
+            dst_pixel += (dst.pitch - 320);
+            src_pixel += (src.pitch - 320);
+        }
+    }
 
     /// <summary>對應 mainint.c:JE_drawTextWindow —— 遊戲內文字視窗。</summary>
     public static void JE_drawTextWindow(string text)

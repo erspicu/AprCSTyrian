@@ -643,7 +643,7 @@ internal static unsafe partial class Tyrian2
         // if (isNetworkGame && reallyEndLevel) goto start_level;  // 網路不移植
 
         /* SMOOTHIES! */
-        Mainint.JE_checkSmoothies(); // TODO: 待移植（設定 anySmoothies）
+        Mainint.JE_checkSmoothies();
         if (Backgrnd.anySmoothies)
             Video.VGAScreen = Video.VGAScreen2;  // this makes things complicated, but we do it anyway :(
 
@@ -684,7 +684,7 @@ internal static unsafe partial class Tyrian2
 
         if (Config.processorType > 1 && Config.smoothies[5 - 1])
         {
-            Mainint.iced_blur_filter(Video.game_screen, Video.VGAScreen); // TODO: 待移植 濾鏡
+            Mainint.iced_blur_filter(Video.game_screen, Video.VGAScreen);
             Video.VGAScreen = Video.game_screen;
         }
 
@@ -709,12 +709,12 @@ internal static unsafe partial class Tyrian2
 
         if (Config.smoothies[0] && Config.processorType > 2 && Backgrnd.smoothie_data[0] == 0)
         {
-            Mainint.lava_filter(Video.game_screen, Video.VGAScreen); // TODO: 待移植 濾鏡
+            Mainint.lava_filter(Video.game_screen, Video.VGAScreen);
             Video.VGAScreen = Video.game_screen;
         }
         if (Config.smoothies[2 - 1] && Config.processorType > 2)
         {
-            Mainint.water_filter(Video.game_screen, Video.VGAScreen); // TODO: 待移植 濾鏡
+            Mainint.water_filter(Video.game_screen, Video.VGAScreen);
             Video.VGAScreen = Video.game_screen;
         }
 
@@ -734,7 +734,7 @@ internal static unsafe partial class Tyrian2
 
         if (Config.smoothies[0] && Config.processorType > 2 && Backgrnd.smoothie_data[0] > 0)
         {
-            Mainint.lava_filter(Video.game_screen, Video.VGAScreen); // TODO: 待移植 濾鏡
+            Mainint.lava_filter(Video.game_screen, Video.VGAScreen);
             Video.VGAScreen = Video.game_screen;
         }
 
@@ -778,12 +778,12 @@ internal static unsafe partial class Tyrian2
 
         if (Config.processorType > 1 && Config.smoothies[3 - 1])
         {
-            Mainint.iced_blur_filter(Video.game_screen, Video.VGAScreen); // TODO: 待移植 濾鏡
+            Mainint.iced_blur_filter(Video.game_screen, Video.VGAScreen);
             Video.VGAScreen = Video.game_screen;
         }
         if (Config.processorType > 1 && Config.smoothies[4 - 1])
         {
-            Mainint.blur_filter(Video.game_screen, Video.VGAScreen); // TODO: 待移植 濾鏡
+            Mainint.blur_filter(Video.game_screen, Video.VGAScreen);
             Video.VGAScreen = Video.game_screen;
         }
 
@@ -1440,7 +1440,7 @@ internal static unsafe partial class Tyrian2
         /*Filtration*/
         if (Config.filterActive)
         {
-            Mainint.JE_filterScreen(Config.levelFilter, Config.levelBrightness); // TODO: 待移植 濾鏡
+            Mainint.JE_filterScreen(Config.levelFilter, Config.levelBrightness);
         }
 
         Tyrian2.draw_boss_bar();
