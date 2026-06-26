@@ -28,6 +28,177 @@ internal static unsafe partial class Mainint
         Buffer.MemoryCopy(src.pixels, dst.pixels, n, n);
     }
 
+    public static bool performSave;
+
+    /// <summary>對應 mainint.c:JE_operation。目前僅移植 load 路徑；存檔命名對話框(performSave) 待 in-game 選單。</summary>
+    public static void JE_operation(byte slot)
+    {
+        if (!performSave)
+        {
+            if (Config.saveFiles[slot - 1].level > 0)
+            {
+                Config.gameJustLoaded = true;
+                Config.JE_loadGame(slot);
+                Varz.gameLoaded = true;
+            }
+        }
+        // else: 存檔命名輸入對話框（performSave==true，由 in-game 選單觸發）待後續移植
+    }
+
+    public static bool JE_loadScreen()
+    {
+        if (Sprites.shopSpriteSheet.data == null)
+            Sprites.JE_loadCompShapes(ref Sprites.shopSpriteSheet, '1');
+
+        bool restart = true;
+        int playersIndex = 0;
+        const int menuItemsCount = 12;
+        int selectedIndex = 0;
+
+        const int xCenter = 320 / 2, yMenuHeader = 5, xMenuItem = 10, xMenuItemName = 10,
+                  xMenuItemLastLevel = 120, xMenuItemEpisode = 250, wMenuItem = 300,
+                  yMenuItems = 30, dyMenuItems = 13, hMenuItem = 8,
+                  xLeftControl = 83, xRightControl = 213, wControl = 24, yControls = 179;
+
+        for (; ; )
+        {
+            Nortsong.setFrameCount(1);
+
+            if (restart)
+            {
+                Picload.JE_loadPic(Video.VGAScreen2, 2, false);
+                Vga256d.fill_rectangle_wh(Video.VGAScreen2, 0, 192, 320, 8, 0);
+            }
+
+            CopyScreen(Video.VGAScreen, Video.VGAScreen2);
+
+            FontDraw.drawFontHvShadowAligned(Video.VGAScreen, xCenter, yMenuHeader, Helptext.miscText[38 + playersIndex], Font.FONT_LARGE, FontAlignment.ALIGN_CENTER, 15, -3, false, 2);
+
+            for (int i = 0; i < menuItemsCount; ++i)
+            {
+                int y = yMenuItems + dyMenuItems * i;
+                bool selected = i == selectedIndex;
+
+                if (i == menuItemsCount - 1)
+                {
+                    Fonthand.JE_textShade(Video.VGAScreen, xMenuItemName, y, Helptext.miscText[33], 13, selected ? 6 : 2, Fonthand.FULL_SHADE);
+                    continue;
+                }
+
+                var sf = Config.saveFiles[playersIndex * 11 + i];
+                bool disabled = sf.level == 0;
+
+                if (disabled)
+                {
+                    Fonthand.JE_textShade(Video.VGAScreen, xMenuItemName, y, Helptext.miscText[2], 13, selected ? 6 : 0, Fonthand.FULL_SHADE);
+                    Fonthand.JE_textShade(Video.VGAScreen, xMenuItemLastLevel, y, $"{Helptext.miscTextB[2]} -----", 5, selected ? 6 : 0, Fonthand.FULL_SHADE);
+                }
+                else
+                {
+                    Fonthand.JE_textShade(Video.VGAScreen, xMenuItemName, y, CStr(sf.name), 13, selected ? 6 : 2, Fonthand.FULL_SHADE);
+                    Fonthand.JE_textShade(Video.VGAScreen, xMenuItemLastLevel, y, $"{Helptext.miscTextB[2]} {CStr(sf.levelName)}", 5, selected ? 6 : 2, Fonthand.FULL_SHADE);
+                    Fonthand.JE_textShade(Video.VGAScreen, xMenuItemEpisode, y, $"{Helptext.miscTextB[1]} {sf.episode}", 5, selected ? 6 : 2, Fonthand.FULL_SHADE);
+                }
+            }
+
+            bool leftControlVisible = playersIndex > 0;
+            bool rightControlVisible = playersIndex < 1;
+            if (leftControlVisible) Sprites.blit_sprite2x2(Video.VGAScreen, xLeftControl, yControls, Sprites.shopSpriteSheet, 279);
+            if (rightControlVisible) Sprites.blit_sprite2x2(Video.VGAScreen, xRightControl, yControls, Sprites.shopSpriteSheet, 281);
+
+            Helptext.JE_helpBox(Video.VGAScreen, 103, 182, Helptext.miscText[55], 25, 7, 15, 1, Fonthand.FULL_SHADE);
+
+            if (restart)
+            {
+                Mouse.mouseCursor = Mouse.MOUSE_POINTER_NORMAL;
+                Palette.fade_palette(Palette.colors, 10, 0, 255);
+                restart = false;
+            }
+
+            Mouse.JE_mouseStart();
+            Video.JE_showVGA();
+            Mouse.JE_mouseReplace();
+
+            Keyboard.waitUntilElapsed();
+            Keyboard.waitUntilHasInput(InputFlags.INPUT_ANY);
+
+            bool leftAction = false, rightAction = false, action = false, done = false;
+
+            if (Keyboard.mouseGetInput(InputFlags.INPUT_ANY, out MouseInput mi))
+            {
+                if (leftControlVisible && mi.y >= yControls && mi.x >= xLeftControl && mi.x < xLeftControl + wControl)
+                {
+                    if (mi.button == SdlKeys.SDL_BUTTON_LEFT) { Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR); leftAction = true; }
+                }
+                else if (rightControlVisible && mi.y >= yControls && mi.x >= xRightControl && mi.x < xRightControl + wControl)
+                {
+                    if (mi.button == SdlKeys.SDL_BUTTON_LEFT) { Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR); rightAction = true; }
+                }
+                else if (mi.x >= xMenuItem && mi.x < xMenuItem + wMenuItem)
+                {
+                    for (int i = 0; i < menuItemsCount; ++i)
+                    {
+                        int yMenuItem = yMenuItems + dyMenuItems * i;
+                        if (mi.y >= yMenuItem && mi.y < yMenuItem + hMenuItem)
+                        {
+                            if (selectedIndex != i) { Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR); selectedIndex = i; }
+                            if (mi.button == SdlKeys.SDL_BUTTON_LEFT) action = true;
+                            break;
+                        }
+                    }
+                }
+                if (mi.button == SdlKeys.SDL_BUTTON_RIGHT) { Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING); done = true; }
+            }
+            else if (Keyboard.keyboardGetInput(out KeyboardInput ki))
+            {
+                switch (ki.scancode)
+                {
+                    case SdlKeys.SDL_SCANCODE_LEFT: Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR); leftAction = true; break;
+                    case SdlKeys.SDL_SCANCODE_RIGHT: Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR); rightAction = true; break;
+                    case SdlKeys.SDL_SCANCODE_UP: Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR); selectedIndex = selectedIndex == 0 ? menuItemsCount - 1 : selectedIndex - 1; break;
+                    case SdlKeys.SDL_SCANCODE_DOWN: Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR); selectedIndex = selectedIndex == menuItemsCount - 1 ? 0 : selectedIndex + 1; break;
+                    case SdlKeys.SDL_SCANCODE_SPACE: case SdlKeys.SDL_SCANCODE_RETURN: action = true; break;
+                    case SdlKeys.SDL_SCANCODE_ESCAPE: Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING); done = true; break;
+                }
+            }
+
+            if (leftAction)
+                playersIndex = playersIndex == 0 ? 1 : 0;
+            else if (rightAction)
+                playersIndex = playersIndex == 1 ? 0 : 1;
+            else if (action)
+            {
+                if (selectedIndex == menuItemsCount - 1)
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+                    done = true;
+                }
+                else
+                {
+                    int saveFileIndex = playersIndex * 11 + selectedIndex;
+                    if (Config.saveFiles[saveFileIndex].level == 0)
+                    {
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CLINK);
+                    }
+                    else
+                    {
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+                        performSave = false;
+                        JE_operation((byte)(saveFileIndex + 1));
+                        Palette.fade_black(15);
+                        return Varz.gameLoaded;
+                    }
+                }
+            }
+
+            if (done)
+            {
+                Palette.fade_black(15);
+                return false;
+            }
+        }
+    }
+
     private const int MAX_PAGE = 8, TOPICS = 6;
     private static readonly byte[] topicStart = { 0, 1, 2, 3, 7, 255 };
 

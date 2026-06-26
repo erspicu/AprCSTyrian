@@ -217,7 +217,7 @@ internal static unsafe partial class Tyrian2
                         break;
                     case MENU_ITEM_LOAD_GAME:
                         Palette.fade_black(15);
-                        if (JE_loadScreen()) return true;
+                        if (Mainint.JE_loadScreen()) return true;
                         restart = true;
                         break;
                     case MENU_ITEM_HIGH_SCORES:
@@ -293,7 +293,6 @@ internal static unsafe partial class Tyrian2
     }
 
     // === 子畫面 stub（待後續移植；目前回到標題） ===
-    private static bool JE_loadScreen() => false;
     private static void setupMenu() { }
     private static void JE_whoa() { }
     private static void newSuperTyrianGame() { }

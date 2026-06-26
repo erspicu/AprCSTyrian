@@ -62,7 +62,7 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - [x] **mainint 起手**：`Mainint.JE_initPlayerData`(新遊戲玩家初始化)/`JE_drawPortConfigButtons`
 - [x] **真實標題畫面/主選單**：`Tyrian2.titleScreen`(tyrian2.c)：tyrian.pic 標題圖 + Tyrian logo +
       選單(鍵盤/滑鼠導航) + SONG_TITLE 配樂 + 淡入 + 特殊碼；Quit/ESC 結束。TyrianGame 主迴圈改走 titleScreen
-      （取代星空 demo）。「High Scores」已接 JE_highScoreScreen；「Instructions」已接 JE_helpSystem；子畫面(setupMenu/loadScreen) 暫 stub
+      （取代星空 demo）。「High Scores」已接 JE_highScoreScreen；「Instructions」已接 JE_helpSystem；「Load Game」已接 JE_loadScreen；僅 Setup(game_menu.c) 暫 stub
 - [x] **New Game 選單流程**：`Menus.gameplaySelect`/`episodeSelect`/`difficultySelect`(menus.c，含隱藏難度解鎖) +
       `Tyrian2.newGame`(1P/2P/arcade 模式設定、cash/ship)；「Start New Game」→ 真實 gameplay→episode→difficulty 導航
 - 註：config_file.c(opentyrian.cfg INI)、關卡地圖載入(megaData)、varz 其餘重度函式、
