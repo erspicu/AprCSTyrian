@@ -55,5 +55,19 @@ internal static unsafe partial class Tyrian2
     public static bool randomExplosions;                   // varz.h: JE_boolean randomExplosions
     public static bool allPlayersGone;                     // varz.h: JE_boolean allPlayersGone
     public static bool musicFade;                          // musmast.h: JE_boolean musicFade
+
+    // === JE_main 逐行移植新增的全域（對應 varz.h / mainint.h）===
+    public static bool waitToEndLevel;                     // varz.h: JE_boolean waitToEndLevel
+    public static int galagaLife;                          // varz.h: JE_longint galagaLife
+    public static bool debug;                              // varz.h: JE_boolean debug（除錯模式，預設 false）
+    public static bool editShip1, editShip2;               // varz.h: JE_boolean editShip1, editShip2
+    public static byte zinglonDuration;                    // varz.h: JE_byte zinglonDuration
+    public static byte nextSpecialWait;                    // varz.h: JE_byte nextSpecialWait
+    public static bool yourInGameMenuRequest;              // mainint.h: JE_boolean yourInGameMenuRequest
+    public static byte flash;                              // varz.h: JE_byte flash（祕密關卡顯示閃爍）
+    public static sbyte flashChange;                       // varz.h: JE_shortint flashChange
+    public static uint debugTime, lastDebugTime;           // tyrian2.c 區域：SDL_GetTicks 計時
+    public static float debugHist;                         // tyrian2.c 區域：FPS 統計
+    public static int debugHistCount;
 #pragma warning restore CS0649
 }

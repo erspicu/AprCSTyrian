@@ -33,6 +33,22 @@ internal static unsafe partial class Mainint
 
     public static ushort textErase; // mainint.c: JE_word textErase
 
+    // ===========================================================================
+    // 以下為 JE_main 逐行移植所需、但尚未移植之函式的「空殼」（no-op），
+    // 讓主迴圈可編譯。實際行為待日後填入；呼叫點皆受對應旗標守護（多數情況不會觸發）。
+    // ===========================================================================
+    public static void JE_checkSmoothies() { /* TODO: 待移植 JE_checkSmoothies（smoothie/濾鏡判定，設 anySmoothies） */ }
+    public static void JE_mainKeyboardInput() { /* TODO: 待移植 JE_mainKeyboardInput（遊戲中鍵盤：暫停/作弊鍵） */ }
+    public static void JE_pauseGame() { /* TODO: 待移植 JE_pauseGame（暫停畫面） */ }
+    public static void JE_doInGameSetup() { /* TODO: 待移植 JE_doInGameSetup（遊戲中設定選單） */ }
+    public static void JE_handleChat() { /* TODO: 網路聊天（network.c 不移植） */ }
+    public static void JE_gammaCorrect(SDL_Color[] colors, byte gamma) { /* TODO: 待移植 JE_gammaCorrect（gamma 校正） */ }
+    public static void JE_filterScreen(sbyte filter, sbyte brightness) { /* TODO: 待移植 JE_filterScreen（螢幕濾鏡/亮度） */ }
+    public static void iced_blur_filter(SDL_Surface dst, SDL_Surface src) { /* TODO: 待移植 iced_blur_filter（濾鏡） */ }
+    public static void lava_filter(SDL_Surface dst, SDL_Surface src) { /* TODO: 待移植 lava_filter（濾鏡） */ }
+    public static void water_filter(SDL_Surface dst, SDL_Surface src) { /* TODO: 待移植 water_filter（濾鏡） */ }
+    public static void blur_filter(SDL_Surface dst, SDL_Surface src) { /* TODO: 待移植 blur_filter（濾鏡） */ }
+
     /// <summary>對應 mainint.c:JE_drawTextWindow —— 遊戲內文字視窗。</summary>
     public static void JE_drawTextWindow(string text)
     {

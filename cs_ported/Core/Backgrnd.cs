@@ -14,10 +14,13 @@ internal static unsafe partial class Backgrnd
     public static ushort mapXPos, oldMapXOfs, mapXOfs, mapX2Ofs, mapX2Pos, mapX3Pos, oldMapX3Ofs, mapX3Ofs, tempMapXOfs;
     public static int mapXbpPos, mapX2bpPos, mapX3bpPos;          // C: intptr_t（tile 欄位偏移）
     public static int mapYPosIdx, mapY2PosIdx, mapY3PosIdx;       // C: byte**（改為 mainmap flat 索引）
+    public static int BKwrap1Idx, BKwrap1toIdx;                   // C: BKwrap1/BKwrap1to（megaData1.mainmap flat 索引）
     public static int BKwrap2Idx, BKwrap2toIdx;                   // C: BKwrap2/BKwrap2to（megaData2.mainmap flat 索引）
+    public static int BKwrap3Idx, BKwrap3toIdx;                   // C: BKwrap3/BKwrap3to（megaData3.mainmap flat 索引）
     public static ushort tempBackMove;                            // 當前敵人層的背景捲動量
     public static byte map1YDelay, map1YDelayMax, map2YDelay, map2YDelayMax;
     public static bool anySmoothies;
+    public static ushort neat;                                    // tyrian2.c: superWild 用全域累加（JE_darkenBackground 的明暗等級）
     public static readonly byte[] smoothie_data = new byte[9];
     public static int starfield_speed;
 #pragma warning restore CS0649

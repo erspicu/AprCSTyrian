@@ -143,6 +143,7 @@ internal static partial class Varz
     public static bool optionAttachmentLinked, optionAttachmentReturn; // varz.c JE_boolean
     public static byte chargeWait, chargeLevel, chargeMax, chargeGr, chargeGrWait; // varz.c JE_byte
     public static readonly byte[] SFExecuted = new byte[2]; // varz.c: JE_byte SFExecuted[2]
+    public static readonly byte[,] SFCurrentCode = new byte[2, 21]; // varz.c: JE_byte SFCurrentCode[2][21]
 
     // demo 錄/放系統（待移植 demo file IO；先放狀態欄位供編譯）
     public static byte demo_keys;                 // mainint.c: Uint8 demo_keys

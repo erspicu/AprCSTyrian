@@ -16,6 +16,7 @@ internal static unsafe class Loudness
 
     private static bool music_stopped = true;
     public static uint song_playing = 0;
+    public static bool playing = false; // loudness.h: extern JE_boolean playing（歌曲是否正在播放）
 
     public static bool audio_disabled = false, music_disabled = false, samples_disabled = false;
 
