@@ -211,6 +211,13 @@ internal static unsafe partial class Tyrian2
                         Varz.enemy[b].armorleft = (byte)(armorleft - dmg);
                         Varz.soundQueue[5] = (byte)Sndmast.S_ENEMY_HIT;
                         Varz.JE_setupExplosion(sx, sy, 0, 0, false, false);
+
+                        // edlevel 傷害態轉換（跨越門檻 → 切換受損外觀/受損動畫）
+                        if (armorleft - dmg <= Varz.enemy[b].edlevel &&
+                            ((!Varz.enemy[b].edamaged) ^ (Varz.enemy[b].edani < 0)))
+                        {
+                            Tyrian2.JE_enemyDamageTransform(b);
+                        }
                     }
                     else if (armorleft != 255)
                     {

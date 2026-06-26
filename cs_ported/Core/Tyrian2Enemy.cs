@@ -233,6 +233,48 @@ internal static unsafe partial class Tyrian2
         Varz.enemy[en].fixedmovey = eventRec[eventLoc - 1].eventdat6;
     }
 
+    /// <summary>
+    /// 敵人受擊後跨越 edlevel 門檻時的傷害態轉換（受損圖/受損動畫/或死亡）。
+    /// 對應 tyrian2.c 1574-1612 的單一敵人分支（連動敵人群組待後續）。
+    /// </summary>
+    public static void JE_enemyDamageTransform(int b)
+    {
+        Varz.enemy[b].enemycycle = 1;
+        Varz.enemy[b].edamaged = !Varz.enemy[b].edamaged;
+
+        if (Varz.enemy[b].edani != 0)
+        {
+            Varz.enemy[b].ani = (byte)Math.Abs(Varz.enemy[b].edani);
+            Varz.enemy[b].aniactive = 1;
+            Varz.enemy[b].animax = 0;
+            Varz.enemy[b].animin = (byte)Varz.enemy[b].edgr;
+            Varz.enemy[b].enemycycle = (byte)(Varz.enemy[b].animin - 1);
+        }
+        else if (Varz.enemy[b].edgr > 0)
+        {
+            Varz.enemy[b].egr[0] = Varz.enemy[b].edgr;
+            Varz.enemy[b].ani = 1;
+            Varz.enemy[b].aniactive = 0;
+            Varz.enemy[b].animax = 0;
+            Varz.enemy[b].animin = 1;
+        }
+        else
+        {
+            Varz.enemyAvail[b] = 1; // 無受損圖 → 死亡
+        }
+
+        Varz.enemy[b].aniwhenfire = 0;
+
+        if (Varz.enemy[b].armorleft > Varz.enemy[b].edlevel)
+            Varz.enemy[b].armorleft = (byte)Varz.enemy[b].edlevel;
+
+        int tempX = Varz.enemy[b].ex + Varz.enemy[b].mapoffset, tempY = Varz.enemy[b].ey;
+        if (Episodes.enemyDat[Varz.enemy[b].enemytype].esize != 1)
+            Varz.JE_setupExplosion(tempX, tempY - 6, 0, 1, false, false);
+        else
+            Varz.JE_setupExplosionLarge(Varz.enemy[b].enemyground, (byte)(Varz.enemy[b].explonum / 2), tempX, tempY);
+    }
+
     private static void JE_barX(int x1, int y1, int x2, int y2, int col)
     {
         Vga256d.fill_rectangle_xy(Video.VGAScreen, x1, y1, x2, y1, (byte)(col + 1));
