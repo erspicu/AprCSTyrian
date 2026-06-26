@@ -18,6 +18,9 @@ internal static unsafe partial class Tyrian2
             return;
         }
 
+        int levelEndGrace = 80;
+
+    start_level_first: // 對應 opentyr.c/tyrian2.c 的 start_level（過關後載入下一關）
         // --- start_level_first ---
         Loudness.set_volume((byte)Nortsong.tyrMusicVolume, (byte)Nortsong.fxVolume);
 
@@ -98,11 +101,12 @@ internal static unsafe partial class Tyrian2
         // === 最小遊戲主迴圈骨架：捲動三層背景 ===
         // TODO: 完整 JE_main 遊戲邏輯 —— 事件系統(eventRec/curLoc)、敵人生成/AI、
         //       玩家移動(player.c)、射擊(simulate_player_shots)、碰撞、HUD、關卡結束。
-        while (!quitRequested)
+        levelEndGrace = 80;
+        while (true)
         {
             Keyboard.handleSdlEvents();
-            if (Keyboard.keysactive[SdlKeys.SDL_SCANCODE_ESCAPE])
-                break;
+            if (quitRequested || Keyboard.keysactive[SdlKeys.SDL_SCANCODE_ESCAPE])
+                return; // ESC → 結束回標題
 
             Nortsong.setFrameCount(2);
 
@@ -269,8 +273,40 @@ internal static unsafe partial class Tyrian2
             Varz.JE_drawArmor();
             Mainint.JE_inGameDisplays();
 
+            // === 關卡結束偵測（簡化）：所有事件處理完 + 場上無敵人/敵彈 → 倒數 → 過關 ===
+            if (eventLoc > maxEvent)
+            {
+                bool anyEnemy = false;
+                for (int z = 0; z < 100; z++)
+                    if (Varz.enemyAvail[z] != 1) { anyEnemy = true; break; }
+                bool anyShot = false;
+                for (int z = 0; z < VarzConst.ENEMY_SHOT_MAX; z++)
+                    if (!Varz.enemyShotAvail[z]) { anyShot = true; break; }
+
+                if (!anyEnemy && !anyShot)
+                {
+                    if (--levelEndGrace <= 0)
+                        reallyEndLevel = true;
+                }
+                else
+                {
+                    levelEndGrace = 80;
+                }
+            }
+
             Video.JE_showVGA();
             Nortsong.delayUntilElapsed();
+
+            if (reallyEndLevel)
+                break;
+        }
+
+        // 過關：載入下一關（對應 goto start_level）。mainLevel==0（章節結束）則回標題。
+        Config.mainLevel = Config.nextLevel;
+        if (Config.mainLevel != 0)
+        {
+            Palette.fade_black(15);
+            goto start_level_first;
         }
     }
 }
