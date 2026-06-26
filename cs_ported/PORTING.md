@@ -57,6 +57,8 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       +JE_helpBox/HBox)；`Menus` 文字占位（已驗證："Episode 1: Escape"/"Start New Game" 正確）
 - [x] **命令列參數**：`ArgParse`(arg_parse.c getopt 重實作)+`Params`(params.c JE_paramCheck)+`Xmas`(占位)；
       網路選項視為不支援；TyrianGame/Program 串接 argv
+- [x] **背景繪製 backgrnd.c**：`Backgrnd`(draw_background_1/2/3 + blit_background_row/blend + JE_darkenBackground)
+      flat-index 走訪 megaData.mainmap(C 的 byte** → nint[] 索引)；實機驗證 draw_background_1=56448/64000 非零像素
 - [x] **JE_loadMap 關卡載入**：`Tyrian2.JE_loadMap`(tyrian2.c)：episode 檔 ]X 命令解析(過場/設定/跳關/galaga/engage) +
       Part2 讀 LEVELS.DAT(mapX/敵人/event)/shapes?.dat→megaData(shape blob+mainmap 指標)。實機驗證 ep1lv1 正確
       (maxEvent=1009/levelEnemyMax=7)。JE_itemScreen/JE_nextEpisode/JE_displayText/平移過場 暫 stub/簡化
