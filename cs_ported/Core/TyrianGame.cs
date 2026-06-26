@@ -45,6 +45,7 @@ public sealed class TyrianGame
                 Episodes.JE_scanForEpisodes();
                 Episodes.JE_initEpisode(1);
                 Editship.JE_loadExtraShapes();
+                Helptext.JE_loadHelpText(); // 載入選單/說明文字 (tyrian.hdt)
 
                 // 音訊：初始化混音器 + 載入音效 + 播放 OPL 音樂。
                 Loudness.init_audio();
