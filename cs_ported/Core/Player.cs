@@ -66,7 +66,14 @@ internal sealed unsafe class Player
     public PlayerItems items, last_items;
 
     public bool is_dragonwing; // i.e., is player 2
-    public byte* lives;
+    // C 原為 `byte* lives = &items.weapon[p].power`（殘機別名到武器 power 欄位）。
+    // C# 無法取結構欄位穩定指標，改存「別名的武器 port 索引」+ 屬性存取。
+    public byte livesPort;
+    public byte Lives
+    {
+        get => items.weapon[livesPort].power;
+        set => items.weapon[livesPort].power = value;
+    }
 
     // calculatable
     public uint shield_max;

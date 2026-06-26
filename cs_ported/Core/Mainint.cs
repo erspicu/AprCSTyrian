@@ -196,7 +196,35 @@ internal static unsafe partial class Mainint
         if (player[0].items.special > 0)
             Sprites.blit_sprite2x2(Video.VGAScreen, 25, 1, Sprites.spriteSheet10, Episodes.special[player[0].items.special].itemgraphic);
 
-        // TODO: 街機/雙人模式 lives 顯示（需 player.lives 指標別名移植）
+        // 街機/雙人模式殘機顯示（對應 mainint.c 2945-2980）
+        if (Config.onePlayerAction || Config.twoPlayerMode)
+        {
+            for (int temp = 0; temp < (Config.onePlayerAction ? 1 : 2); temp++)
+            {
+                uint extra_lives = (uint)(player[temp].Lives - 1);
+                int y = (temp == 0 && player[0].items.special > 0) ? 35 : 15;
+                int tw = (temp == 0) ? 30 : 270;
+
+                if (extra_lives >= 5)
+                {
+                    Sprites.blit_sprite2(Video.VGAScreen, tw, y, Sprites.spriteSheet9, 285);
+                    tw = (temp == 0) ? 45 : 250;
+                    Fonthand.JE_textShade(Video.VGAScreen, tw, y + 3, $"{extra_lives}", 15, 1, Fonthand.FULL_SHADE);
+                }
+                else if (extra_lives >= 1)
+                {
+                    for (uint i = 0; i < extra_lives; ++i)
+                    {
+                        Sprites.blit_sprite2(Video.VGAScreen, tw, y, Sprites.spriteSheet9, 285);
+                        tw += (temp == 0) ? 12 : -12;
+                    }
+                }
+
+                string stemp = (temp == 0) ? Helptext.miscText[48] : Helptext.miscText[49];
+                tw = (temp == 0) ? 28 : (285 - Fonthand.JE_textWidth(stemp, (uint)Sprites.TINY_FONT));
+                Fonthand.JE_textShade(Video.VGAScreen, tw, y - 7, stemp, 2, 6, Fonthand.FULL_SHADE);
+            }
+        }
 
         for (int i = 0; i < 2; ++i)
         {
@@ -796,8 +824,7 @@ internal static unsafe partial class Mainint
             player[p].armor = Episodes.ships[player[p].items.ship].dmg;
 
             player[p].is_dragonwing = (p == 1);
-            // TODO: 原為 player[p].lives = &player[p].items.weapon[p].power（C 指標別名 hack）；
-            //       class 欄位無法穩定取址，待生命值系統移植時改為等價存取。
+            player[p].livesPort = (byte)p; // lives 別名到 weapon[p].power
         }
 
         Config.mainLevel = Episodes.FIRST_LEVEL;

@@ -57,6 +57,7 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
       +JE_helpBox/HBox)；`Menus` 文字占位（已驗證："Episode 1: Escape"/"Start New Game" 正確）
 - [x] **命令列參數**：`ArgParse`(arg_parse.c getopt 重實作)+`Params`(params.c JE_paramCheck)+`Xmas`(占位)；
       網路選項視為不支援；TyrianGame/Program 串接 argv
+- [x] **player.lives 別名**：C `byte* lives=&weapon[p].power` → livesPort 索引 + Lives 屬性; 街機殘機顯示接上; 驗證雙向別名
 - [x] **過關摘要 JE_endLevelAni** + adjust_difficulty + cube 收集動畫(JE_drawCube)(完成關卡名/現金/摧毀率/難度調整/ShipEdit 權限/資料方塊收集; glow 文字; 接入過關流程)
 - [x] **連動敵人群組死亡**：JE_killEnemyGroup(被擊毀敵人 + linknum 編組一起死亡，各自 enemydie/計分/爆炸; edlevel==-1 score item 轉換/globalFlags/254 事件跳轉)
 - [x] **enemyOnScreen 計數**：畫面內非受損敵人計數；砲塔發射改僅限畫面內敵人(對應 JE_drawEnemy 339-351)
