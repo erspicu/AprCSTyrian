@@ -222,7 +222,7 @@ internal static unsafe partial class Tyrian2
                         break;
                     case MENU_ITEM_HIGH_SCORES:
                         Palette.fade_black(15);
-                        JE_highScoreScreen();
+                        Mainint.JE_highScoreScreen();
                         restart = true;
                         break;
                     case MENU_ITEM_INSTRUCTIONS:
@@ -294,7 +294,6 @@ internal static unsafe partial class Tyrian2
 
     // === 子畫面 stub（待後續移植；目前回到標題） ===
     private static bool JE_loadScreen() => false;
-    private static void JE_highScoreScreen() { }
     private static void JE_helpSystem(byte startTopic) { }
     private static void setupMenu() { }
     private static void JE_whoa() { }
