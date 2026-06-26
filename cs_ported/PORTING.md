@@ -26,7 +26,10 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - [x] **Sprites/Fonts**：`Sprites`(sprite.c：Sprite/Sprite2 結構 + 全 blit 變體 + shape table 載入)、
       `FontDraw`(font.c)、`Fonthand`(fonthand.c：fontMap/JE_outText/dString/textShade…)、`Sndmast`(音效常數)
 - [x] **里程碑**：真實 `tyrian.shp` 字型疊在 `tyrian.pic` 圖上顯示文字（"APRCSTYRIAN" 等），無 crash
-- 註：`config_file.c`/`config.c` **刻意延後**至 varz 遊戲全域結構就緒後（見 Plan 第 7 項）
+- [x] **背景星空**：`Starlib`(starlib.c) 3D 星空 → 標題星空背景（互動鍵暫簡化）
+- [x] **varz 結構**：`VarzConst`(常數/enum) + 資料結構（JE_SingleEnemyType/EnemyShotType/Explosion/
+      rep_explosion_type/superpixel_type/JE_EventRecType）+ `Varz` 全域陣列（enemy/enemyShot/explosions…）
+- 註：`config_file.c`/`config.c` 與 varz.c 函式/const 表/MegaData 地圖結構待 player/episodes 與遊戲邏輯
 - [x] solution + 雙專案骨架（`AprCSTyrian.slnx` / `Core` / `App`）
 - [x] Core Ports：`IVideoBackend` `IAudioBackend` `IInputBackend` `IClock` `IFileSystem` `IGamePlatform`
 - [x] Core 型別：`Color`(8-bit RGB, `FromVga`) / `GameKey` / `VgaScreen`(320×200)
