@@ -29,6 +29,40 @@ internal static unsafe partial class Mainint
     }
 
     public static bool performSave;
+    public static ushort upgradeCost, downgradeCost;
+
+    /// <summary>對應 mainint.c:weapon_upgrade_cost —— 武器升級成本（base × Σ1..power）。</summary>
+    public static long weapon_upgrade_cost(long base_cost, uint power)
+    {
+        uint temp = 0;
+        for (; power > 0; power--) temp += power;
+        return base_cost * temp;
+    }
+
+    /// <summary>對應 mainint.c:JE_getCost —— 物品價格（武器另計算升/降級成本）。</summary>
+    public static long JE_getCost(byte itemType, ushort itemNum)
+    {
+        long cost = 0;
+        switch (itemType)
+        {
+            case 2:
+                cost = (itemNum > 90) ? 100 : Episodes.ships[itemNum].cost;
+                break;
+            case 3:
+            case 4:
+                cost = Episodes.weaponPort[itemNum].cost;
+                uint port = (uint)(itemType - 3);
+                uint item_power = (uint)(Players.player[0].items.weapon[(int)port].power - 1);
+                downgradeCost = (ushort)weapon_upgrade_cost(cost, item_power);
+                upgradeCost = (ushort)weapon_upgrade_cost(cost, item_power + 1);
+                break;
+            case 5: cost = Episodes.shields[itemNum].cost; break;
+            case 6: cost = Episodes.powerSys[itemNum].cost; break;
+            case 7:
+            case 8: cost = Episodes.options[itemNum].cost; break;
+        }
+        return cost;
+    }
 
     /// <summary>對應 mainint.c:adjust_difficulty —— 依分數調整難度（取 max）。</summary>
     public static void adjust_difficulty()

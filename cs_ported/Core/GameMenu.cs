@@ -73,6 +73,48 @@ internal static unsafe partial class GameMenu
         }
     }
 
+    /// <summary>對應 game_menu.c:playeritem_map —— 玩家裝備第 i 項欄位的 ref（船/前後武器/護盾/動力/僚機×2）。</summary>
+    public static ref byte playeritem_map(ref PlayerItems items, int i)
+    {
+        switch (i)
+        {
+            case 0: return ref items.ship;
+            case 1: return ref items.weapon[Players.FRONT_WEAPON].id;
+            case 2: return ref items.weapon[Players.REAR_WEAPON].id;
+            case 3: return ref items.shield;
+            case 4: return ref items.generator;
+            case 5: return ref items.sidekick[0];
+            case 6: return ref items.sidekick[1];
+            default: throw new ArgumentOutOfRangeException(nameof(i));
+        }
+    }
+
+    /// <summary>對應 game_menu.c:JE_cashLeft —— 購買後剩餘現金（含武器升級累計）。</summary>
+    public static long JE_cashLeft()
+    {
+        long tempL = Players.player[0].cash;
+        ushort itemNum = playeritem_map(ref Players.player[0].items, curSel[MENU_UPGRADES] - 2);
+        tempL -= Mainint.JE_getCost((byte)curSel[MENU_UPGRADES], itemNum);
+
+        if (curSel[MENU_UPGRADES] == 3 || curSel[MENU_UPGRADES] == 4)
+        {
+            uint tw = 0;
+            for (uint i = 1; i < Players.player[0].items.weapon[curSel[MENU_UPGRADES] - 3].power; ++i)
+            {
+                tw += (uint)(Episodes.weaponPort[itemNum].cost * i);
+                tempL -= tw;
+            }
+        }
+        return tempL;
+    }
+
+    /// <summary>對應 game_menu.c:JE_drawScore —— 升級子選單顯示剩餘現金。</summary>
+    public static void JE_drawScore()
+    {
+        if (curMenu == MENU_UPGRADE_SUB)
+            Fonthand.JE_textShade(Video.VGAScreen, 65, 173, $"{JE_cashLeft()}", 1, 6, Fonthand.DARKEN);
+    }
+
     /// <summary>對應 game_menu.c:JE_drawItem —— 畫一個物品圖示（武器/動力/選項/護盾/船艦）。</summary>
     public static void JE_drawItem(byte itemType, ushort itemNum, int x, int y)
     {
