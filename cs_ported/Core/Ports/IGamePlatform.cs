@@ -11,4 +11,5 @@ public interface IGamePlatform
     IInputBackend Input { get; }
     IClock Clock { get; }
     IFileSystem Files { get; }
+    IJoystickBackend Joystick { get; }
 }

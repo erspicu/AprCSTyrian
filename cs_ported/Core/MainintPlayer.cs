@@ -350,8 +350,33 @@ internal static unsafe partial class Mainint
                     /* joystick input */
                     if ((inputDevice == 0 || inputDevice >= 3) && Joystick.joysticks > 0)
                     {
-                        // TODO: 待移植 joystick 輸入（poll_joystick/joystick_axis_reduce/joystick_analog_angle
-                        //       及 joystick[].x/.y/.action/.action_pressed 未移植；目前 joysticks==0，此區不執行）
+                        int j = inputDevice == 0 ? 0 : inputDevice - 3;
+                        int j_max = inputDevice == 0 ? Joystick.joysticks : inputDevice - 3 + 1;
+                        for (; j < j_max; j++)
+                        {
+                            Joystick.poll_joystick(j);
+
+                            if (Joystick.joystick[j].analog)
+                            {
+                                mouseXC += Joystick.joystick_axis_reduce(j, Joystick.joystick[j].x);
+                                mouseYC += Joystick.joystick_axis_reduce(j, Joystick.joystick[j].y);
+
+                                link_gun_analog = Joystick.joystick_analog_angle(j, ref link_gun_angle);
+                            }
+                            else
+                            {
+                                this_player.x += (Joystick.joystick[j].direction[3] ? -VarzConst.CURRENT_KEY_SPEED : 0) + (Joystick.joystick[j].direction[1] ? VarzConst.CURRENT_KEY_SPEED : 0);
+                                this_player.y += (Joystick.joystick[j].direction[0] ? -VarzConst.CURRENT_KEY_SPEED : 0) + (Joystick.joystick[j].direction[2] ? VarzConst.CURRENT_KEY_SPEED : 0);
+                            }
+
+                            button[0] |= Joystick.joystick[j].action[0];
+                            button[1] |= Joystick.joystick[j].action[2];
+                            button[2] |= Joystick.joystick[j].action[3];
+                            button[3] |= Joystick.joystick[j].action_pressed[1];
+
+                            ingamemenu_pressed |= Joystick.joystick[j].action_pressed[4];
+                            pause_pressed |= Joystick.joystick[j].action_pressed[5];
+                        }
                     }
 
                     /* mouse input */

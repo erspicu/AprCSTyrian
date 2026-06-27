@@ -14,12 +14,14 @@ internal sealed class SdlPlatform : IGamePlatform, IDisposable
     private readonly SdlInput _input;
     private readonly SdlClock _clock;
     private readonly PhysicalFileSystem _files;
+    private readonly SdlJoystick _joystick;
 
     public IVideoBackend Video => _video;
     public IAudioBackend Audio => _audio;
     public IInputBackend Input => _input;
     public IClock Clock => _clock;
     public IFileSystem Files => _files;
+    public IJoystickBackend Joystick => _joystick;
 
     public SdlPlatform(string windowTitle, int scale, string dataRoot, string userRoot)
     {
@@ -32,10 +34,12 @@ internal sealed class SdlPlatform : IGamePlatform, IDisposable
         _input = new SdlInput();
         _clock = new SdlClock();
         _files = new PhysicalFileSystem(dataRoot, userRoot);
+        _joystick = new SdlJoystick();
     }
 
     public void Dispose()
     {
+        _joystick.Dispose();
         _audio.Dispose();
         _video.Dispose();
         SDL.SDL_Quit();

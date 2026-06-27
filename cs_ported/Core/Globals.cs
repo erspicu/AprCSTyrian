@@ -14,6 +14,7 @@ internal static class Globals
     public static IInputBackend Input = null!;
     public static IClock Clock = null!;
     public static IFileSystem Files = null!;
+    public static IJoystickBackend Joystick = null!;
 
     /// <summary>設定指定的資料根目錄（對應 file.c 的候選目錄之一）。</summary>
     public static string ConfiguredDataDir = "data";
@@ -28,6 +29,7 @@ internal static class Globals
         Input = p.Input;
         Clock = p.Clock;
         Files = p.Files;
+        Joystick = p.Joystick;
         ConfiguredDataDir = dataDir;
         UserDir = userDir;
     }
