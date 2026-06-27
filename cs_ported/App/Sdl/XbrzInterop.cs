@@ -8,4 +8,10 @@ internal static class NesCore
 {
     public static unsafe void* AllocUnmanaged(int bytes)
         => (void*)System.Runtime.InteropServices.Marshal.AllocHGlobal(bytes);
+
+    public static unsafe void FreeUnmanaged(void* p)
+    {
+        if (p != null)
+            System.Runtime.InteropServices.Marshal.FreeHGlobal((System.IntPtr)p);
+    }
 }

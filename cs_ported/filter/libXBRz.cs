@@ -89,29 +89,50 @@ namespace XBRz_speed
         static byte* _preProcBuffer;
         static byte* preProcBuffer_local;
         static int width, height;
+        static int capW, capH;          // 已配置的尺寸相依緩衝容量
         static uint* results_merged;
+
+        /// <summary>
+        /// 設定 xBRZ 輸入尺寸並確保緩衝就緒。可重複呼叫（切換解析度時）：
+        ///  - 色彩距離查表（與尺寸無關）只配置/計算一次。
+        ///  - 尺寸相依緩衝僅在「容量不足」時釋放舊的、重配更大的（grow-only），避免切換時殘留舊大小導致越界 crash。
+        /// </summary>
         public static unsafe void initTable(int _width, int _height)
         {
-            if (lTable_dist != null) return;
-            width = _width; height = _height;
-            lTable_dist = (int*)AprNes.NesCore.AllocUnmanaged(sizeof(int) * 0x1000000);
-            _preProcBuffer = (byte*)AprNes.NesCore.AllocUnmanaged(sizeof(byte) * width * height);
-
-            // ★ 配置合併後的 uint 陣列
-            results_merged = (uint*)AprNes.NesCore.AllocUnmanaged(sizeof(uint) * width * height);
-            preProcBuffer_local = (byte*)AprNes.NesCore.AllocUnmanaged(sizeof(byte) * width);
-
-            for (int i = 0; i < 0x1000000; i++)
+            // 1) 色彩距離查表：一次性。
+            if (lTable_dist == null)
             {
-                int r_diff = ((i & 0xff0000) >> 16) * 2 - 255;
-                int g_diff = ((i & 0x00ff00) >> 8) * 2 - 255;
-                int b_diff = ((i & 0x0000ff) >> 0) * 2 - 255;
-                double kb = 0.0593, kr = 0.2627, kg = 1 - kb - kr;
-                double y = kr * r_diff + kg * g_diff + kb * b_diff;
-                double cb = (0.5 / (1 - kb)) * (b_diff - y);
-                double cr = (0.5 / (1 - kr)) * (r_diff - y);
-                lTable_dist[i] = (int)(y * y + cb * cb + cr * cr);
+                lTable_dist = (int*)AprNes.NesCore.AllocUnmanaged(sizeof(int) * 0x1000000);
+                for (int i = 0; i < 0x1000000; i++)
+                {
+                    int r_diff = ((i & 0xff0000) >> 16) * 2 - 255;
+                    int g_diff = ((i & 0x00ff00) >> 8) * 2 - 255;
+                    int b_diff = ((i & 0x0000ff) >> 0) * 2 - 255;
+                    double kb = 0.0593, kr = 0.2627, kg = 1 - kb - kr;
+                    double y = kr * r_diff + kg * g_diff + kb * b_diff;
+                    double cb = (0.5 / (1 - kb)) * (b_diff - y);
+                    double cr = (0.5 / (1 - kr)) * (r_diff - y);
+                    lTable_dist[i] = (int)(y * y + cb * cb + cr * cr);
+                }
             }
+
+            // 2) 尺寸相依緩衝：容量不足才釋放舊的、重配（grow-only），確保不會用到已釋放/過小的緩衝。
+            if (results_merged == null || _width > capW || _height > capH)
+            {
+                if (_preProcBuffer != null) AprNes.NesCore.FreeUnmanaged(_preProcBuffer);
+                if (results_merged != null) AprNes.NesCore.FreeUnmanaged(results_merged);
+                if (preProcBuffer_local != null) AprNes.NesCore.FreeUnmanaged(preProcBuffer_local);
+
+                capW = Math.Max(_width, capW);
+                capH = Math.Max(_height, capH);
+                _preProcBuffer = (byte*)AprNes.NesCore.AllocUnmanaged(sizeof(byte) * capW * capH);
+                results_merged = (uint*)AprNes.NesCore.AllocUnmanaged(sizeof(uint) * capW * capH);
+                preProcBuffer_local = (byte*)AprNes.NesCore.AllocUnmanaged(sizeof(byte) * capW);
+            }
+
+            // 3) 設定本次輸入邏輯尺寸（≤ 容量；ScaleImage 依此跑迴圈/索引）。
+            width = _width;
+            height = _height;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)] static int GetTopR(byte b) => ((b >> 2) & 0x3);

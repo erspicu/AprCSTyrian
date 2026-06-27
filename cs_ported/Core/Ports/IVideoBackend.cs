@@ -28,12 +28,18 @@ public interface IVideoBackend : IDisposable
     /// <summary>切換全螢幕（對應 video.c:toggle_fullscreen）。</summary>
     void ToggleFullscreen();
 
-    /// <summary>目前的放大濾鏡名稱（供寫回 opentyrian.cfg）。</summary>
-    string ScalerName { get; }
+    /// <summary>第一段放大濾鏡名稱（1x / NN2x / Scale2x / Scale3x / xBRZ2x / xBRZ3x）。供寫回 opentyrian.cfg。</summary>
+    string FirstFilter { get; }
+
+    /// <summary>第二段放大濾鏡名稱（none / NN2x / Scale2x / Scale3x / xBRZ2x / xBRZ3x）。供寫回 opentyrian.cfg。</summary>
+    string SecondFilter { get; }
 
     /// <summary>
-    /// 設定放大濾鏡（None / Scale2x / Scale3x）。對應原版 video_scale 的 scaler 選擇，
-    /// 但本專案以自家 Scalex 濾鏡實作；未知名稱維持現值。
+    /// 設定兩段式放大濾鏡管線（第一段 → 第二段）。未知名稱當作無作用（1x/none）。
+    /// 切換時負責安全釋放/重建中介緩衝與 texture/視窗，不可 crash。
     /// </summary>
-    void SetScaler(string name);
+    void SetFilters(string first, string second);
+
+    /// <summary>把目前畫面存成 PNG 截圖（存到執行檔旁 screenshot/ 目錄，檔名為時間戳）。</summary>
+    void SaveScreenshot();
 }

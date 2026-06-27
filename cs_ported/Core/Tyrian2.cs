@@ -319,14 +319,18 @@ internal static unsafe partial class Tyrian2
     }
 
     // === setupMenu —— 移植 sources/src/opentyr.c:setupMenu（部分修改） ===
-    // 修改點：只實作 MENU_SETUP 與 MENU_SOUND；MENU_GRAPHICS 子選單整個略過
-    //         （依賴被 Scale3x 取代掉的 SDL scaler 基建）。"Graphics..." 仍顯示但畫成
-    //         disabled（較暗，brightness -4），選取時僅播 S_CLICK 不進子選單。
-    private const int MENU_NONE = 0, MENU_SETUP = 1, MENU_SOUND = 2;
-    private const int MENU_COUNT = 3;
+    // 修改點：MENU_GRAPHICS 改為「兩段式放大濾鏡」設定（First/Second Filter + Done），
+    //         取代原本依賴 SDL scaler 基建的圖形選項；MENU_SOUND 維持。
+    private const int MENU_NONE = 0, MENU_SETUP = 1, MENU_SOUND = 2, MENU_GRAPHICS = 3;
+    private const int MENU_COUNT = 4;
 
     private const int MI_NONE = 0, MI_DONE = 1, MI_GRAPHICS = 2, MI_SOUND = 3,
-                      MI_JUKEBOX = 4, MI_MUSIC_VOLUME = 5, MI_SOUND_VOLUME = 6;
+                      MI_JUKEBOX = 4, MI_MUSIC_VOLUME = 5, MI_SOUND_VOLUME = 6,
+                      MI_FIRST_FILTER = 7, MI_SEC_FILTER = 8;
+
+    // 兩段式放大濾鏡可選項（順序對應選單左右循環）。
+    private static readonly string[] FirstFilterOptions = { "1x", "NN2x", "Scale3x", "Scale2x", "xBRZ2x", "xBRZ3x" };
+    private static readonly string[] SecondFilterOptions = { "none", "NN2x", "Scale3x", "Scale2x", "xBRZ2x", "xBRZ3x" };
 
     private readonly struct SetupMenuItem
     {
@@ -365,6 +369,18 @@ internal static unsafe partial class Tyrian2
             new SetupMenuItem(MI_SOUND_VOLUME, "Sound Volume", "Change volume with the left/right arrow keys."),
             new SetupMenuItem(MI_DONE, "Done", "Return to the previous menu."),
         });
+        menus[MENU_GRAPHICS] = new SetupMenu("Graphics", new[]
+        {
+            new SetupMenuItem(MI_FIRST_FILTER, "First Filter", "First scaling filter. Left/right to change."),
+            new SetupMenuItem(MI_SEC_FILTER, "Second Filter", "Second filter, applied after the first. Left/right to change."),
+            new SetupMenuItem(MI_DONE, "Done", "Save settings and return."),
+        });
+
+        // 目前的兩段式濾鏡選擇（從 video backend 讀回，找對應索引）。左右循環即時套用。
+        int firstFilterIdx = Math.Max(0, Array.FindIndex(FirstFilterOptions,
+            o => string.Equals(o, Globals.Video.FirstFilter, StringComparison.OrdinalIgnoreCase)));
+        int secondFilterIdx = Math.Max(0, Array.FindIndex(SecondFilterOptions,
+            o => string.Equals(o, Globals.Video.SecondFilter, StringComparison.OrdinalIgnoreCase)));
 
         if (Sprites.shopSpriteSheet.data == null)
             Sprites.JE_loadCompShapes(ref Sprites.shopSpriteSheet, '1');  // need mouse pointer sprites
@@ -417,8 +433,7 @@ internal static unsafe partial class Tyrian2
                 int y = yMenuItems + dyMenuItems * i;
 
                 bool selected = i == selectedMenuItemIndex;
-                // 修改：Graphics 子選單不可用，永遠畫成 disabled（較暗）。
-                bool disabled = menuItem.id == MI_GRAPHICS;
+                bool disabled = false;
 
                 string name = menuItem.name;
 
@@ -434,6 +449,14 @@ internal static unsafe partial class Tyrian2
                 case MI_SOUND_VOLUME:
                     Nortvars.JE_barDrawShadow(Video.VGAScreen, xMenuItemValue, y, 1, Loudness.samples_disabled ? 170 : 174, (Nortsong.fxVolume + 4) / 8, 2, 10);
                     Vga256d.JE_rectangle(Video.VGAScreen, xMenuItemValue - 2, y - 2, xMenuItemValue + 96, y + 11, 242);
+                    break;
+
+                case MI_FIRST_FILTER:
+                    FontDraw.drawFontHvShadow(Video.VGAScreen, xMenuItemValue, y, FirstFilterOptions[firstFilterIdx], Font.FONT_NORMAL, 15, (sbyte)(-3 + (selected ? 2 : 0)), false, 2);
+                    break;
+
+                case MI_SEC_FILTER:
+                    FontDraw.drawFontHvShadow(Video.VGAScreen, xMenuItemValue, y, SecondFilterOptions[secondFilterIdx], Font.FONT_NORMAL, 15, (sbyte)(-3 + (selected ? 2 : 0)), false, 2);
                     break;
 
                 default:
@@ -522,6 +545,22 @@ internal static unsafe partial class Tyrian2
                                         Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
                                         break;
                                     }
+                                    case MI_FIRST_FILTER:
+                                    {
+                                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                                        firstFilterIdx = (firstFilterIdx + 1) % FirstFilterOptions.Length;
+                                        Globals.Video.SetFilters(FirstFilterOptions[firstFilterIdx], SecondFilterOptions[secondFilterIdx]);
+                                        restart = true;
+                                        break;
+                                    }
+                                    case MI_SEC_FILTER:
+                                    {
+                                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                                        secondFilterIdx = (secondFilterIdx + 1) % SecondFilterOptions.Length;
+                                        Globals.Video.SetFilters(FirstFilterOptions[firstFilterIdx], SecondFilterOptions[secondFilterIdx]);
+                                        restart = true;
+                                        break;
+                                    }
                                     default:
                                         break;
                                     }
@@ -537,6 +576,7 @@ internal static unsafe partial class Tyrian2
                 {
                     Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING);
 
+                    if (currentMenu == MENU_GRAPHICS) Config.saveConfiguration();
                     currentMenu = menuParents[currentMenu];
                 }
             }
@@ -580,6 +620,22 @@ internal static unsafe partial class Tyrian2
                         Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
                         break;
                     }
+                    case MI_FIRST_FILTER:
+                    {
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                        firstFilterIdx = (firstFilterIdx + FirstFilterOptions.Length - 1) % FirstFilterOptions.Length;
+                        Globals.Video.SetFilters(FirstFilterOptions[firstFilterIdx], SecondFilterOptions[secondFilterIdx]);
+                        restart = true; // 視窗尺寸可能變動，重載背景
+                        break;
+                    }
+                    case MI_SEC_FILTER:
+                    {
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                        secondFilterIdx = (secondFilterIdx + SecondFilterOptions.Length - 1) % SecondFilterOptions.Length;
+                        Globals.Video.SetFilters(FirstFilterOptions[firstFilterIdx], SecondFilterOptions[secondFilterIdx]);
+                        restart = true;
+                        break;
+                    }
                     default:
                         break;
                     }
@@ -603,6 +659,22 @@ internal static unsafe partial class Tyrian2
                         Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
                         break;
                     }
+                    case MI_FIRST_FILTER:
+                    {
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                        firstFilterIdx = (firstFilterIdx + 1) % FirstFilterOptions.Length;
+                        Globals.Video.SetFilters(FirstFilterOptions[firstFilterIdx], SecondFilterOptions[secondFilterIdx]);
+                        restart = true;
+                        break;
+                    }
+                    case MI_SEC_FILTER:
+                    {
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                        secondFilterIdx = (secondFilterIdx + 1) % SecondFilterOptions.Length;
+                        Globals.Video.SetFilters(FirstFilterOptions[firstFilterIdx], SecondFilterOptions[secondFilterIdx]);
+                        restart = true;
+                        break;
+                    }
                     default:
                         break;
                     }
@@ -618,6 +690,7 @@ internal static unsafe partial class Tyrian2
                 {
                     Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING);
 
+                    if (currentMenu == MENU_GRAPHICS) Config.saveConfiguration();
                     currentMenu = menuParents[currentMenu];
                     break;
                 }
@@ -636,14 +709,17 @@ internal static unsafe partial class Tyrian2
                 {
                     Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
 
+                    if (currentMenu == MENU_GRAPHICS) Config.saveConfiguration(); // 儲存濾鏡設定
                     currentMenu = menuParents[currentMenu];
                     break;
                 }
                 case MI_GRAPHICS:
                 {
-                    // 修改：Graphics 子選單暫時無法進入（依賴被取代的 SDL scaler 基建）。
-                    // 僅播 S_CLICK 給回饋，不切換選單。
-                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CLICK);
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+
+                    menuParents[MENU_GRAPHICS] = currentMenu;
+                    currentMenu = MENU_GRAPHICS;
+                    selectedMenuItemIndexes[currentMenu] = 0;
                     break;
                 }
                 case MI_SOUND:

@@ -174,6 +174,13 @@ internal static class Keyboard
                     break;
                 }
 
+                // Ctrl+P：截圖（存到執行檔旁 screenshot/）。!Repeat 確保一次按一張。
+                if (!ev.Repeat && (ev.Mod & SdlKeys.KMOD_CTRL) != 0 && ev.Scancode == SdlKeys.SDL_SCANCODE_P)
+                {
+                    Globals.Video.SaveScreenshot();
+                    break;
+                }
+
                 if (!ev.Repeat && ev.Scancode >= 0 && ev.Scancode < keysactive.Length)
                     keysactive[ev.Scancode] = true;
 

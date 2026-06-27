@@ -425,10 +425,11 @@ internal static unsafe partial class Config
         {
             if (section.GetIntOption("fullscreen", out int fs))
                 Video.fullscreen_display = fs;
-            // scaler：套用放大濾鏡（None/Scale2x/Scale3x，本專案 Scalex 實作）。
-            if (section.GetStringOption("scaler", out string scalerName))
-                Globals.Video.SetScaler(scalerName);
-            // scaling_mode：本專案固定，未使用。
+            // 兩段式放大濾鏡：first_filter（1x/NN2x/Scale2x/Scale3x/xBRZ2x/xBRZ3x）+
+            // second_filter（none/...）。預設 1x + none（原始 320×200）。
+            string first = section.GetStringOption("first_filter", out string ff) ? ff : "1x";
+            string second = section.GetStringOption("second_filter", out string sf) ? sf : "none";
+            Globals.Video.SetFilters(first, second);
         }
 
         // keyboard 段：套用使用者自訂按鍵（名稱→scancode 經 input port）。
@@ -457,7 +458,8 @@ internal static unsafe partial class Config
 
         ConfigSection section = config.FindOrAddSection("video", null);
         section.SetIntOption("fullscreen", Video.fullscreen_display);
-        section.SetStringOption("scaler", Globals.Video.ScalerName);
+        section.SetStringOption("first_filter", Globals.Video.FirstFilter);
+        section.SetStringOption("second_filter", Globals.Video.SecondFilter);
 
         // keyboard 段：寫出各鍵綁定（scancode→名稱經 input port）。
         section = config.FindOrAddSection("keyboard", null);
