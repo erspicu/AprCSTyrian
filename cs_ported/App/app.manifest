@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="1.0.0.0" name="AprCSTyrian.app" type="win32" />
+
+  <!--
+    DPI 感知：讓視窗以「實體像素」呈現，不被 Windows 桌面縮放率(125%/150%…)做點陣拉伸。
+    效果：放大濾鏡輸出 1:1 對應螢幕像素(銳利)，視窗大小固定為我們設定的像素、不隨縮放率改變。
+    PerMonitorV2(Win10 1607+) 最佳；true/pm 為舊系統 fallback(系統級感知)。
+  -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2, PerMonitor</dpiAwareness>
+    </windowsSettings>
+  </application>
+</assembly>
