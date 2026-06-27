@@ -80,3 +80,6 @@ Desktop.ini
 # 發佈產出(release.sh)
 /AprCSTyrianRelease/
 /AprCSTyrianRelease-*.zip
+
+# 匯出的圖形素材(可由 EXPORT_PNG 重新產生,不進版控)
+/image/

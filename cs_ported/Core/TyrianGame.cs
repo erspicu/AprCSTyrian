@@ -68,6 +68,16 @@ public sealed class TyrianGame
                     Sprites.JE_loadMainShapeTables("tyrian.shp");
                 }
 
+                // 素材匯出工具：EXPORT_PNG=<目錄> 時匯出所有圖形(套調色盤+保留透明)成 PNG 後結束。
+                {
+                    string? exportDir = Environment.GetEnvironmentVariable("EXPORT_PNG");
+                    if (!string.IsNullOrEmpty(exportDir))
+                    {
+                        PngExport.ExportAll(exportDir);
+                        throw new TyrianHaltException(0);
+                    }
+                }
+
                 // 載入完整物品/敵人資料庫 (tyrian.hdt) 與額外船艦圖。
                 Episodes.JE_scanForEpisodes();
                 Episodes.JE_initEpisode(1);
