@@ -26,6 +26,7 @@
   <!-- 自家放大濾鏡（顯示用，純 RGB 運算，無 SDL）。預設用 Scale3x。 -->
   <ItemGroup>
     <Compile Include="..\filter\Scalex.cs" Link="filter\Scalex.cs" />
+    <Compile Include="..\filter\libXBRz.cs" Link="filter\libXBRz.cs" />
   </ItemGroup>
 
   <ItemGroup>

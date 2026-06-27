@@ -5,11 +5,10 @@ using SDL2;
 namespace AprCSTyrian.App.Sdl;
 
 /// <summary>
-/// <see cref="IVideoBackend"/> 的 SDL2 實作：開一個固定尺寸視窗 + renderer + 一張 streaming texture，
-/// 把 Core 的 320×200 indexed 影格轉成 ARGB，經選定的放大濾鏡（None/Scale2x/Scale3x）後呈現。
+/// <see cref="IVideoBackend"/> 的 SDL2 實作：開一個視窗 + renderer + 一張 streaming texture，
+/// 把 Core 的 320×200 indexed 影格轉成 ARGB，經選定的放大濾鏡後呈現。
 /// 濾鏡可由 opentyrian.cfg 的 video[scaler] 設定（透過 <see cref="SetScaler"/>）。
-/// 視窗尺寸固定，濾鏡只改變中介解析度，再由 renderer 以最近鄰拉伸填滿視窗
-/// （Scale3x 時邏輯=視窗，1:1 無拉伸）。
+/// 支援兩段式：基礎放大（None/Scale2x/Scale3x）後可再串接 xBRZ 2x（Scale3x+xBRZ2x = 6x）。
 /// </summary>
 internal sealed class SdlVideo : IVideoBackend
 {
@@ -20,10 +19,14 @@ internal sealed class SdlVideo : IVideoBackend
     private readonly uint[] _palette = new uint[256];   // 0xAARRGGBB
     private readonly uint[] _rgbBuffer;                  // Width*Height ARGB（原始）
 
-    private int _filterScale = 3;                        // 1=None, 2=Scale2x, 3=Scale3x
-    private string _scalerName = "Scale3x";
-    private uint[] _scaledBuffer = System.Array.Empty<uint>();
-    private int _scaledW, _scaledH;
+    private int _filterScale = 3;                        // 基礎放大：1=None, 2=Scale2x, 3=Scale3x
+    private bool _xbrz2x = true;                          // 在基礎放大之上再套 xBRZ 2x（預設 Scale3x→6x）
+    private string _scalerName = "Scale3x+xBRZ2x";
+    private uint[] _scaledBuffer = System.Array.Empty<uint>();  // 基礎放大輸出（= xBRZ 輸入）
+    private uint[] _xbrzBuffer = System.Array.Empty<uint>();    // xBRZ 2x 輸出（最終上傳 texture）
+    private int _scaledW, _scaledH;                      // 基礎放大尺寸
+    private int _finalW, _finalH;                        // 最終 texture / 邏輯尺寸
+    private bool _xbrzInited;
 
     public int Width { get; }
     public int Height { get; }
@@ -53,19 +56,36 @@ internal sealed class SdlVideo : IVideoBackend
         if (_renderer == IntPtr.Zero)
             throw new InvalidOperationException($"SDL_CreateRenderer 失敗: {SDL.SDL_GetError()}");
 
-        ApplyScaler(_filterScale); // 預設 Scale3x
+        ApplyScaler(_filterScale, _xbrz2x); // 預設 Scale3x + xBRZ2x = 6x
     }
 
-    /// <summary>依 _filterScale 重建中介緩衝 + texture + 邏輯尺寸。</summary>
-    private void ApplyScaler(int filterScale)
+    /// <summary>依基礎放大倍率 + xBRZ 後處理重建中介緩衝 + texture + 邏輯尺寸 + 視窗大小。</summary>
+    private void ApplyScaler(int filterScale, bool xbrz2x)
     {
         _filterScale = filterScale;
+        _xbrz2x = xbrz2x;
         _scaledW = Width * filterScale;
         _scaledH = Height * filterScale;
         _scaledBuffer = new uint[_scaledW * _scaledH];
 
-        // 邏輯尺寸 = 中介解析度；renderer 拉伸到固定視窗（Scale3x 時=視窗即 1:1）。
-        SDL.SDL_RenderSetLogicalSize(_renderer, _scaledW, _scaledH);
+        int mul = xbrz2x ? 2 : 1;
+        _finalW = _scaledW * mul;
+        _finalH = _scaledH * mul;
+
+        if (xbrz2x)
+        {
+            _xbrzBuffer = new uint[_finalW * _finalH];
+            // xBRZ 查表/緩衝以「輸入尺寸」一次性配置（initTable 內部有 once 守衛）。
+            // 僅此一種 xBRZ 模式（輸入恆為 Scale3x 輸出），故尺寸固定一致。
+            if (!_xbrzInited)
+            {
+                XBRz_speed.HS_XBRz.initTable(_scaledW, _scaledH);
+                _xbrzInited = true;
+            }
+        }
+
+        // 邏輯尺寸 = 最終解析度；renderer 拉伸到視窗。
+        SDL.SDL_RenderSetLogicalSize(_renderer, _finalW, _finalH);
 
         if (_texture != IntPtr.Zero)
             SDL.SDL_DestroyTexture(_texture);
@@ -73,26 +93,40 @@ internal sealed class SdlVideo : IVideoBackend
             _renderer,
             SDL.SDL_PIXELFORMAT_ARGB8888,
             (int)SDL.SDL_TextureAccess.SDL_TEXTUREACCESS_STREAMING,
-            _scaledW, _scaledH);
+            _finalW, _finalH);
         if (_texture == IntPtr.Zero)
             throw new InvalidOperationException($"SDL_CreateTexture 失敗: {SDL.SDL_GetError()}");
+
+        // 視窗放大到最終解析度（顯示 xBRZ 6x 細節）；但不超過桌面可用區域，
+        // 避免在 1080p 等螢幕上視窗比螢幕高、標題列跑出畫面外。超出時等比例縮小，
+        // 由 renderer 將最終邏輯尺寸縮進視窗。
+        int winW = _finalW, winH = _finalH;
+        if (SDL.SDL_GetDisplayUsableBounds(0, out SDL.SDL_Rect ub) == 0 && ub.w > 0 && ub.h > 0)
+        {
+            double k = Math.Min(1.0, Math.Min((double)ub.w / winW, (double)ub.h / winH));
+            winW = (int)(winW * k);
+            winH = (int)(winH * k);
+        }
+        SDL.SDL_SetWindowSize(_window, winW, winH);
+        SDL.SDL_SetWindowPosition(_window, SDL.SDL_WINDOWPOS_CENTERED, SDL.SDL_WINDOWPOS_CENTERED);
     }
 
     public void SetScaler(string name)
     {
-        int fs = name?.Trim().ToLowerInvariant() switch
+        int fs; bool xbrz;
+        switch (name?.Trim().ToLowerInvariant())
         {
-            "none" or "nearest" or "no scaling" => 1,
-            "scale2x" => 2,
-            "scale3x" => 3,
-            _ => 0, // 未知：維持現值
-        };
-        if (fs == 0)
-            return;
+            case "none": case "nearest": case "no scaling": fs = 1; xbrz = false; break;
+            case "scale2x": fs = 2; xbrz = false; break;
+            case "scale3x": fs = 3; xbrz = false; break;
+            case "scale3x+xbrz2x": case "xbrz6x": case "6x": fs = 3; xbrz = true; break;
+            default: return; // 未知：維持現值
+        }
 
-        _scalerName = fs == 1 ? "None" : fs == 2 ? "Scale2x" : "Scale3x";
-        if (fs != _filterScale)
-            ApplyScaler(fs);
+        _scalerName = xbrz ? "Scale3x+xBRZ2x"
+                    : fs == 1 ? "None" : fs == 2 ? "Scale2x" : "Scale3x";
+        if (fs != _filterScale || xbrz != _xbrz2x)
+            ApplyScaler(fs, xbrz);
     }
 
     public void SetPalette(ReadOnlySpan<Color> palette)
@@ -120,11 +154,24 @@ internal sealed class SdlVideo : IVideoBackend
                 {
                     case 2: ScalexTool.toScale2x_dx(src, Width, Height, dst); break;
                     case 3: ScalexTool.toScale3x_dx(src, Width, Height, dst); break;
-                    default: // None：直接複製 320×200，由 renderer 最近鄰拉伸
+                    default: // None：直接複製 320×200，由 renderer 拉伸
                         Buffer.MemoryCopy(src, dst, (long)count * sizeof(uint), (long)count * sizeof(uint));
                         break;
                 }
-                SDL.SDL_UpdateTexture(_texture, IntPtr.Zero, (IntPtr)dst, _scaledW * sizeof(uint));
+
+                if (_xbrz2x)
+                {
+                    // 第二段：把基礎放大結果(_scaledBuffer)再經 xBRZ 2x → _xbrzBuffer（最終 6x）。
+                    fixed (uint* fin = _xbrzBuffer)
+                    {
+                        XBRz_speed.HS_XBRz.ScaleImage(dst, fin, 2);
+                        SDL.SDL_UpdateTexture(_texture, IntPtr.Zero, (IntPtr)fin, _finalW * sizeof(uint));
+                    }
+                }
+                else
+                {
+                    SDL.SDL_UpdateTexture(_texture, IntPtr.Zero, (IntPtr)dst, _finalW * sizeof(uint));
+                }
             }
         }
 
@@ -135,10 +182,10 @@ internal sealed class SdlVideo : IVideoBackend
 
     public void MapWindowToScreen(ref int x, ref int y)
     {
-        // 邏輯尺寸為 _filterScale 倍，換回遊戲 320×200 座標。
+        // 邏輯尺寸為最終放大倍率，換回遊戲 320×200 座標（_finalW/Width = 總倍率）。
         SDL.SDL_RenderWindowToLogical(_renderer, x, y, out float lx, out float ly);
-        x = (int)lx / _filterScale;
-        y = (int)ly / _filterScale;
+        x = (int)lx / (_finalW / Width);
+        y = (int)ly / (_finalH / Height);
     }
 
     private bool _fullscreen;
