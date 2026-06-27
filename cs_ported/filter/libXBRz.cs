@@ -155,9 +155,12 @@ namespace XBRz_speed
             int rot = _MATRIX_ROTATION[nr + i * _MAX_SCALE + j];
             int targetIdx = outi + (rot & 0xFF) + (rot >> 8) * outW;
             uint dst = trg[targetIdx]; uint invN = m - n;
-            uint res_RB = (((col & 0x00FF00FFu) * n + (dst & 0x00FF00FFu) * invN) / m) & 0x00FF00FFu;
-            uint res_G = (((col & 0x0000FF00u) * n + (dst & 0x0000FF00u) * invN) / m) & 0x0000FF00u;
-            trg[targetIdx] = 0xFF000000u | res_RB | res_G;
+            // 逐通道混合（對應官方 gradientRGB）。不可把 R+B 打包成單一除法：
+            // 角落混合常用 /100（非 2 次方），R 通道除法的餘數會溢進 B 通道 → 產生假藍點。
+            uint r = (((col >> 16) & 0xFFu) * n + ((dst >> 16) & 0xFFu) * invN) / m;
+            uint g = (((col >> 8) & 0xFFu) * n + ((dst >> 8) & 0xFFu) * invN) / m;
+            uint b = ((col & 0xFFu) * n + (dst & 0xFFu) * invN) / m;
+            trg[targetIdx] = 0xFF000000u | (r << 16) | (g << 8) | b;
         }
 
         // 對應官方 xbrz.cpp distYCbCr：BT.2020 浮點係數 + sqrt（**線性**距離）。
