@@ -94,4 +94,10 @@ internal sealed unsafe class SdlInput : IInputBackend
 
     public void ShowCursor(bool show) =>
         SDL.SDL_ShowCursor(show ? SDL.SDL_ENABLE : SDL.SDL_DISABLE);
+
+    public string GetScancodeName(int scancode) =>
+        SDL.SDL_GetScancodeName((SDL.SDL_Scancode)scancode) ?? "";
+
+    public int GetScancodeFromName(string name) =>
+        (int)SDL.SDL_GetScancodeFromName(name);  // SDL_SCANCODE_UNKNOWN == 0；呼叫端比對
 }

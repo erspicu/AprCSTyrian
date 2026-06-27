@@ -27,4 +27,13 @@ public interface IVideoBackend : IDisposable
 
     /// <summary>切換全螢幕（對應 video.c:toggle_fullscreen）。</summary>
     void ToggleFullscreen();
+
+    /// <summary>目前的放大濾鏡名稱（供寫回 opentyrian.cfg）。</summary>
+    string ScalerName { get; }
+
+    /// <summary>
+    /// 設定放大濾鏡（None / Scale2x / Scale3x）。對應原版 video_scale 的 scaler 選擇，
+    /// 但本專案以自家 Scalex 濾鏡實作；未知名稱維持現值。
+    /// </summary>
+    void SetScaler(string name);
 }

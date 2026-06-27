@@ -5,33 +5,38 @@ using SDL2;
 namespace AprCSTyrian.App.Sdl;
 
 /// <summary>
-/// <see cref="IVideoBackend"/> 的 SDL2 實作：開一個視窗 + 硬體加速 renderer +
-/// 一張 streaming texture，把 Core 的 indexed 影格轉成 ARGB 後放大呈現。
+/// <see cref="IVideoBackend"/> 的 SDL2 實作：開一個固定尺寸視窗 + renderer + 一張 streaming texture，
+/// 把 Core 的 320×200 indexed 影格轉成 ARGB，經選定的放大濾鏡（None/Scale2x/Scale3x）後呈現。
+/// 濾鏡可由 opentyrian.cfg 的 video[scaler] 設定（透過 <see cref="SetScaler"/>）。
+/// 視窗尺寸固定，濾鏡只改變中介解析度，再由 renderer 以最近鄰拉伸填滿視窗
+/// （Scale3x 時邏輯=視窗，1:1 無拉伸）。
 /// </summary>
 internal sealed class SdlVideo : IVideoBackend
 {
     private readonly IntPtr _window;
     private readonly IntPtr _renderer;
-    private readonly IntPtr _texture;
-
-    private const int FILTER_SCALE = 3;  // Scale3x
+    private IntPtr _texture;
 
     private readonly uint[] _palette = new uint[256];   // 0xAARRGGBB
     private readonly uint[] _rgbBuffer;                  // Width*Height ARGB（原始）
-    private readonly uint[] _scaledBuffer;               // (Width*3)*(Height*3) ARGB（Scale3x 後）
-    private readonly int _scaledW, _scaledH;
+
+    private int _filterScale = 3;                        // 1=None, 2=Scale2x, 3=Scale3x
+    private string _scalerName = "Scale3x";
+    private uint[] _scaledBuffer = System.Array.Empty<uint>();
+    private int _scaledW, _scaledH;
 
     public int Width { get; }
     public int Height { get; }
+    public string ScalerName => _scalerName;
 
     public SdlVideo(string title, int width, int height, int scale)
     {
         Width = width;
         Height = height;
         _rgbBuffer = new uint[width * height];
-        _scaledW = width * FILTER_SCALE;
-        _scaledH = height * FILTER_SCALE;
-        _scaledBuffer = new uint[_scaledW * _scaledH];
+
+        // 像素藝術：最近鄰拉伸（非整數倍時才會用到）。
+        SDL.SDL_SetHint(SDL.SDL_HINT_RENDER_SCALE_QUALITY, "0");
 
         _window = SDL.SDL_CreateWindow(
             title,
@@ -48,10 +53,22 @@ internal sealed class SdlVideo : IVideoBackend
         if (_renderer == IntPtr.Zero)
             throw new InvalidOperationException($"SDL_CreateRenderer 失敗: {SDL.SDL_GetError()}");
 
-        // 邏輯尺寸 = Scale3x 後的解析度；整數縮放避免再模糊。
-        SDL.SDL_RenderSetLogicalSize(_renderer, _scaledW, _scaledH);
-        SDL.SDL_RenderSetIntegerScale(_renderer, SDL.SDL_bool.SDL_TRUE);
+        ApplyScaler(_filterScale); // 預設 Scale3x
+    }
 
+    /// <summary>依 _filterScale 重建中介緩衝 + texture + 邏輯尺寸。</summary>
+    private void ApplyScaler(int filterScale)
+    {
+        _filterScale = filterScale;
+        _scaledW = Width * filterScale;
+        _scaledH = Height * filterScale;
+        _scaledBuffer = new uint[_scaledW * _scaledH];
+
+        // 邏輯尺寸 = 中介解析度；renderer 拉伸到固定視窗（Scale3x 時=視窗即 1:1）。
+        SDL.SDL_RenderSetLogicalSize(_renderer, _scaledW, _scaledH);
+
+        if (_texture != IntPtr.Zero)
+            SDL.SDL_DestroyTexture(_texture);
         _texture = SDL.SDL_CreateTexture(
             _renderer,
             SDL.SDL_PIXELFORMAT_ARGB8888,
@@ -59,6 +76,23 @@ internal sealed class SdlVideo : IVideoBackend
             _scaledW, _scaledH);
         if (_texture == IntPtr.Zero)
             throw new InvalidOperationException($"SDL_CreateTexture 失敗: {SDL.SDL_GetError()}");
+    }
+
+    public void SetScaler(string name)
+    {
+        int fs = name?.Trim().ToLowerInvariant() switch
+        {
+            "none" or "nearest" or "no scaling" => 1,
+            "scale2x" => 2,
+            "scale3x" => 3,
+            _ => 0, // 未知：維持現值
+        };
+        if (fs == 0)
+            return;
+
+        _scalerName = fs == 1 ? "None" : fs == 2 ? "Scale2x" : "Scale3x";
+        if (fs != _filterScale)
+            ApplyScaler(fs);
     }
 
     public void SetPalette(ReadOnlySpan<Color> palette)
@@ -82,7 +116,14 @@ internal sealed class SdlVideo : IVideoBackend
             fixed (uint* src = _rgbBuffer)
             fixed (uint* dst = _scaledBuffer)
             {
-                ScalexTool.toScale3x_dx(src, Width, Height, dst);    // 320x200 → 960x600 平滑放大
+                switch (_filterScale)
+                {
+                    case 2: ScalexTool.toScale2x_dx(src, Width, Height, dst); break;
+                    case 3: ScalexTool.toScale3x_dx(src, Width, Height, dst); break;
+                    default: // None：直接複製 320×200，由 renderer 最近鄰拉伸
+                        Buffer.MemoryCopy(src, dst, (long)count * sizeof(uint), (long)count * sizeof(uint));
+                        break;
+                }
                 SDL.SDL_UpdateTexture(_texture, IntPtr.Zero, (IntPtr)dst, _scaledW * sizeof(uint));
             }
         }
@@ -94,10 +135,10 @@ internal sealed class SdlVideo : IVideoBackend
 
     public void MapWindowToScreen(ref int x, ref int y)
     {
-        // 邏輯尺寸為 3x，換回遊戲 320x200 座標。
+        // 邏輯尺寸為 _filterScale 倍，換回遊戲 320×200 座標。
         SDL.SDL_RenderWindowToLogical(_renderer, x, y, out float lx, out float ly);
-        x = (int)lx / FILTER_SCALE;
-        y = (int)ly / FILTER_SCALE;
+        x = (int)lx / _filterScale;
+        y = (int)ly / _filterScale;
     }
 
     private bool _fullscreen;

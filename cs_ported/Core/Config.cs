@@ -111,6 +111,12 @@ internal static unsafe partial class Config
 
     public static readonly int[] keySettings = new int[8];
 
+    // opentyrian.cfg keyboard 段的鍵名（對應 config.c:keySettingNames）。
+    private static readonly string[] keySettingNames =
+    {
+        "up", "down", "left", "right", "fire", "change fire", "left sidekick", "right sidekick",
+    };
+
     public static sbyte levelFilter, levelFilterNew, levelBrightness, levelBrightnessChg;
     public static bool filtrationAvail, filterActive, filterFade, filterFadeStart;
     public static bool gameJustLoaded;
@@ -419,10 +425,26 @@ internal static unsafe partial class Config
         {
             if (section.GetIntOption("fullscreen", out int fs))
                 Video.fullscreen_display = fs;
-            // scaler / scaling_mode：待 set_scaler_by_name / set_scaling_mode_by_name 移植。
+            // scaler：套用放大濾鏡（None/Scale2x/Scale3x，本專案 Scalex 實作）。
+            if (section.GetStringOption("scaler", out string scalerName))
+                Globals.Video.SetScaler(scalerName);
+            // scaling_mode：本專案固定，未使用。
         }
 
-        // keyboard 段：待 SDL_GetScancodeFromName 移植後才能套用各鍵；目前僅 round-trip 保留。
+        // keyboard 段：套用使用者自訂按鍵（名稱→scancode 經 input port）。
+        section = config.FindSection("keyboard", null);
+        if (section != null)
+        {
+            for (int i = 0; i < keySettings.Length; ++i)
+            {
+                if (section.GetStringOption(keySettingNames[i], out string keyName))
+                {
+                    int scancode = Globals.Input.GetScancodeFromName(keyName);
+                    if (scancode != 0) // SDL_SCANCODE_UNKNOWN
+                        keySettings[i] = scancode;
+                }
+            }
+        }
 
         return true;
     }
@@ -435,8 +457,12 @@ internal static unsafe partial class Config
 
         ConfigSection section = config.FindOrAddSection("video", null);
         section.SetIntOption("fullscreen", Video.fullscreen_display);
-        // scaler / scaling_mode：待 scalers[].name / scaling_mode_names 移植。
-        // keyboard 段：待 SDL_GetScancodeName 移植；既有段於 round-trip 保留。
+        section.SetStringOption("scaler", Globals.Video.ScalerName);
+
+        // keyboard 段：寫出各鍵綁定（scancode→名稱經 input port）。
+        section = config.FindOrAddSection("keyboard", null);
+        for (int i = 0; i < keySettings.Length; ++i)
+            section.SetStringOption(keySettingNames[i], Globals.Input.GetScancodeName(keySettings[i]));
 
         try { Directory.CreateDirectory(get_user_directory()); } catch { /* 對應 mkdir，已存在則忽略 */ }
 

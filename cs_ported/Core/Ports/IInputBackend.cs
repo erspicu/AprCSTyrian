@@ -14,4 +14,10 @@ public interface IInputBackend
 
     /// <summary>顯示/隱藏系統滑鼠游標（對應 SDL_ShowCursor）。</summary>
     void ShowCursor(bool show);
+
+    /// <summary>scancode → 人類可讀名稱（對應 SDL_GetScancodeName）。用於 opentyrian.cfg 按鍵設定。</summary>
+    string GetScancodeName(int scancode);
+
+    /// <summary>名稱 → scancode；未知回 0（SDL_SCANCODE_UNKNOWN）（對應 SDL_GetScancodeFromName）。</summary>
+    int GetScancodeFromName(string name);
 }
