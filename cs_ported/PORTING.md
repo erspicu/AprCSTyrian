@@ -121,24 +121,29 @@ OpenTyrian (C, `../sources/`) → .NET 10 / C# 移植追蹤。
 - [x] 調色盤與繪圖：`palette.c`(Palette) / `vga256d.c`(Vga256d) / `video.c`(Video) / `sprite.c`(Sprite) /
       `font.c`(Font) / `fonthand.c`(Fonthand)
 - [x] 亂數：`mtrand.c`(MtRand，指標式 MT 與原版序列一致)
-- [x] 設定/存檔：`config.c`(Config，含加解密/存檔/高分)　／　[ ] `config_file.c`(opentyrian.cfg INI，未移植)
-- [x] 音訊：`loudness.c`(混音) / `opl.c`(OPL2 FM) / `lds_play.c`(Lds) / `nortsong.c`(Nortsong)　／　[ ] `jukebox.c`(未移植)
-- [x] 輸入：`keyboard.c`(Keyboard，中性事件佇列) / `mouse.c`(Mouse) / `joystick.c`(Joystick stub)
+- [x] 設定/存檔：`config.c`(Config) / **`config_file.c`(ConfigFile，opentyrian.cfg INI ✅)**
+- [x] 音訊：`loudness.c` / `opl.c`(OPL2 FM) / `lds_play.c` / `nortsong.c` / **`jukebox.c`(Jukebox ✅)**
+- [x] 輸入：`keyboard.c`(Keyboard) / `mouse.c`(Mouse) / **`joystick.c`(Joystick ✅，Ports&Adapters)**
 - [x] 遊戲核心：`shots.c`(Shots) / `backgrnd.c`(Backgrnd) / `starlib.c`(Starlib)
 - [x] **`tyrian2.c`**：titleScreen / JE_loadMap / JE_main 主迴圈 / JE_eventSystem / 完整敵人系統
       (makeEnemy/updateEnemies/turret/碰撞/群組死亡/edlevel/boss)　／　intro_logos / newGame
 - [x] **`mainint.c`**：JE_initPlayerData / highScore / helpSystem / loadScreen / inGameDisplays /
-      playerDamage / endLevelAni / adjust_difficulty / JE_getCost / drawCube　(JE_playerMovement 完整版未移植，主迴圈用簡化版)
-- [~] **`menus.c`**(Menus，開新遊戲選單 ✅) ／ **`opentyr.c`**(main 流程在 TyrianGame ✅，setupMenu 未移植)
-- [~] **`game_menu.c`**(GameMenu)：drawItem / 選單狀態機 / drawMenuHeader·Choices / 經濟層(playeritem_map/
-      getCost/cashLeft/drawScore) / genItemMenu / scaleBitmap / 星圖(computeDots/drawDots/drawPlanet/drawLines/NavLines) ✅
-      ／ **待**：updateNavScreen / drawShipSpecs / 武器預覽 / drawMainMenuHelpText / menuFunction / **JE_itemScreen 主迴圈**
-- [ ] `player.c`(玩家移動/碰撞，主迴圈用簡化版) ／ `destruct.c`(毀滅模式，未移植)
+      playerDamage / endLevelAni / **JE_playerMovement 完整版** / gamma / 遊戲中選單暫停 全部 ✅
+- [x] **`menus.c`**(Menus ✅) ／ **`opentyr.c`**(main ✅，**setupMenu 🟡** Sound/Jukebox/Done ✅、Graphics 暫停用)
+- [x] **`game_menu.c`**(GameMenu ✅)：**JE_itemScreen 商店主迴圈** + 武器預覽 + 星圖導航 全部完成
+- [x] `player.c` ✅ ／ **`destruct.c`(毀滅模式 全59函式 ✅)** ／ `xmas.c`(雪花 ✅)
 - [~] 網路 `network.c`：**不移植**（決議跳過）
 
-> **總結**：核心遊戲（開機→選單→多關卡戰鬥→過關→循環）已完整可玩且忠實移植。
-> 唯一未完成的主要功能是 `game_menu.c` 的**商店 `JE_itemScreen` 主迴圈**（helper 已大致湊齊，待組裝）；
-> 次要未移植：config_file.c(INI)、jukebox.c、destruct.c(毀滅模式)、setupMenu、JE_playerMovement 完整版。
+> **總結**：移植任務已完成 —— 所有「純語法翻譯可達成」項目皆忠實移植並逐一實機驗證（自創 0%）。未做的僅 network（守則不移植）。
+
+## 改進階段（post-migration，2026-06-27）
+移植完成後的功能改進（以本專案架構做最佳實作）：
+- [x] **Scale3x 顯示濾鏡**：自家 `filter/Scalex.cs` 接入 `SdlVideo`，取代原版 hqNx
+- [x] **joystick 支援**：Ports&Adapters（`IJoystickBackend`+`SdlJoystick`），Core 維持 SDL-free
+- [x] **首頁 SETUP**：Sound/Jukebox/Done ✅；Graphics 暫停用
+- [x] **config_file INI**（`ConfigFile.cs`）+ **設定持久化**：joystick 指派 / keyboard 綁定 / scaler 選擇 存讀 opentyrian.cfg
+- [x] **滑鼠不再鎖視窗**：移除 relative-mode grab
+- [x] **可選放大濾鏡**：None/Scale2x/Scale3x（持久化）
 
 ## 備註
 - 遊戲需 Tyrian 2.1 freeware 資料檔：https://camanis.net/tyrian/tyrian21.zip
