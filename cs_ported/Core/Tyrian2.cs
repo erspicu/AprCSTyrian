@@ -329,8 +329,8 @@ internal static unsafe partial class Tyrian2
                       MI_FIRST_FILTER = 7, MI_SEC_FILTER = 8;
 
     // 兩段式放大濾鏡可選項（順序對應選單左右循環）。
-    private static readonly string[] FirstFilterOptions = { "1x", "NN2x", "Scale3x", "Scale2x", "xBRZ2x", "xBRZ3x" };
-    private static readonly string[] SecondFilterOptions = { "none", "NN2x", "Scale3x", "Scale2x", "xBRZ2x", "xBRZ3x" };
+    private static readonly string[] FirstFilterOptions = { "1x", "NN2x", "Scale3x", "Scale2x", "xBRZ2x", "xBRZ3x", "xBRZ4x" };
+    private static readonly string[] SecondFilterOptions = { "none", "NN2x", "Scale3x", "Scale2x", "xBRZ2x", "xBRZ3x", "xBRZ4x" };
 
     private readonly struct SetupMenuItem
     {

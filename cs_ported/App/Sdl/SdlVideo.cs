@@ -12,7 +12,7 @@ namespace AprCSTyrian.App.Sdl;
 /// </summary>
 internal sealed class SdlVideo : IVideoBackend
 {
-    private enum Step { Nearest2, Scale2x, Scale3x, Xbrz2, Xbrz3 }
+    private enum Step { Nearest2, Scale2x, Scale3x, Xbrz2, Xbrz3, Xbrz4 }
 
     private readonly IntPtr _window;
     private readonly IntPtr _renderer;
@@ -36,7 +36,12 @@ internal sealed class SdlVideo : IVideoBackend
     public string FirstFilter => _first;
     public string SecondFilter => _second;
 
-    private static int StepFactor(Step s) => (s == Step.Scale3x || s == Step.Xbrz3) ? 3 : 2;
+    private static int StepFactor(Step s) => s switch
+    {
+        Step.Scale3x or Step.Xbrz3 => 3,
+        Step.Xbrz4 => 4,
+        _ => 2, // Nearest2 / Scale2x / Xbrz2
+    };
 
     /// <summary>濾鏡名稱 → Step；1x/none/未知 → null（無作用）。</summary>
     private static Step? ParseFilter(string? name)
@@ -48,6 +53,7 @@ internal sealed class SdlVideo : IVideoBackend
             case "scale3x": case "scale3": return Step.Scale3x;
             case "xbrz2x": return Step.Xbrz2;
             case "xbrz3x": return Step.Xbrz3;
+            case "xbrz4x": return Step.Xbrz4;
             default: return null; // 1x / none / 未知
         }
     }
@@ -55,12 +61,12 @@ internal sealed class SdlVideo : IVideoBackend
     private static string CanonFirst(string? name) => ParseFilter(name) switch
     {
         Step.Nearest2 => "NN2x", Step.Scale2x => "Scale2x", Step.Scale3x => "Scale3x",
-        Step.Xbrz2 => "xBRZ2x", Step.Xbrz3 => "xBRZ3x", _ => "1x",
+        Step.Xbrz2 => "xBRZ2x", Step.Xbrz3 => "xBRZ3x", Step.Xbrz4 => "xBRZ4x", _ => "1x",
     };
     private static string CanonSecond(string? name) => ParseFilter(name) switch
     {
         Step.Nearest2 => "NN2x", Step.Scale2x => "Scale2x", Step.Scale3x => "Scale3x",
-        Step.Xbrz2 => "xBRZ2x", Step.Xbrz3 => "xBRZ3x", _ => "none",
+        Step.Xbrz2 => "xBRZ2x", Step.Xbrz3 => "xBRZ3x", Step.Xbrz4 => "xBRZ4x", _ => "none",
     };
 
     public SdlVideo(string title, int width, int height, int scale)
@@ -101,7 +107,7 @@ internal sealed class SdlVideo : IVideoBackend
         int w = Width, h = Height;
         foreach (var s in _pipeline)
         {
-            if (s == Step.Xbrz2 || s == Step.Xbrz3)
+            if (s == Step.Xbrz2 || s == Step.Xbrz3 || s == Step.Xbrz4)
                 XBRz_speed.HS_XBRz.initTable(w, h); // 確保容量；切換時不會用到過小/已釋放緩衝
             w *= StepFactor(s);
             h *= StepFactor(s);
@@ -204,6 +210,10 @@ internal sealed class SdlVideo : IVideoBackend
                         case Step.Xbrz3:
                             XBRz_speed.HS_XBRz.initTable(cw, ch);
                             XBRz_speed.HS_XBRz.ScaleImage(cur, outp, 3);
+                            break;
+                        case Step.Xbrz4:
+                            XBRz_speed.HS_XBRz.initTable(cw, ch);
+                            XBRz_speed.HS_XBRz.ScaleImage(cur, outp, 4);
                             break;
                     }
                     cur = outp;
