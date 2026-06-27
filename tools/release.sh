@@ -40,6 +40,7 @@ rm -rf "$RELDIR"
 dotnet publish cs_ported/App/App.csproj -c Release -r win-x64 --self-contained true \
     -p:PlatformTarget=x64 -p:KeyLogOff=true \
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+    -p:PublishTrimmed=true \
     -p:DebugType=none -p:DebugSymbols=false \
     -o "$RELDIR" >/dev/null
 # 註:
