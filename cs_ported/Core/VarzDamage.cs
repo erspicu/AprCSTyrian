@@ -25,6 +25,7 @@ internal static unsafe partial class Varz
 
                     if (player[pi].is_alive && !Config.youAreCheating)
                     {
+                        DebugLog.Log($"DEATH via playerDamage (armor depleted) p{pi}: youAreCheating={Config.youAreCheating} -> is_alive=false, levelEnd=40");
                         levelTimer = false;
                         player[pi].is_alive = false;
                         player[pi].exploding_ticks = 60;

@@ -293,6 +293,7 @@ internal static unsafe partial class Mainint
                 }
                 else
                 {
+                    DebugLog.Log($"DEATH via constantDie (armor=0): constantDie={Params.constantDie} -> is_alive=false, levelEnd=40");
                     this_player.is_alive = false;
                     this_player.exploding_ticks = 60;
                     Varz.levelEnd = 40;

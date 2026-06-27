@@ -981,7 +981,10 @@ internal static unsafe partial class Mainint
 
         if (Tyrian2.yourInGameMenuRequest)
         {
-            if (JE_inGameSetup())
+            DebugLog.Log($"MENU open: p0.is_alive={Players.player[0].is_alive} armor={Players.player[0].armor} shield={Players.player[0].shield} expl={Players.player[0].exploding_ticks} constantDie={Params.constantDie} constantPlay={Params.constantPlay} processorType={Config.processorType}");
+            bool _r = JE_inGameSetup();
+            DebugLog.Log($"MENU close: result={_r} p0.is_alive={Players.player[0].is_alive} armor={Players.player[0].armor} shield={Players.player[0].shield} expl={Players.player[0].exploding_ticks} constantDie={Params.constantDie} reallyEndLevel={Tyrian2.reallyEndLevel} playerEndLevel={Tyrian2.playerEndLevel} processorType={Config.processorType}");
+            if (_r)
             {
                 Tyrian2.reallyEndLevel = true;
                 Tyrian2.playerEndLevel = true;

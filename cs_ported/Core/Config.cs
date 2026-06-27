@@ -231,6 +231,7 @@ internal static unsafe partial class Config
     {
         var sf = saveFiles[slot - 1];
         var player = Players.player;
+        DebugLog.Log($"JE_saveGame slot={slot} name='{name?.Trim()}' p0.Lives={Players.player[0].Lives} armor={Players.player[0].armor} is_alive={Players.player[0].is_alive} mainLevel={mainLevel} curLevel={Tyrian2.lvlFileNum}");
 
         sf.initialDifficulty = (byte)initialDifficulty;
         sf.gameHasRepeated = gameHasRepeated;
@@ -283,6 +284,7 @@ internal static unsafe partial class Config
 
     public static void JE_loadGame(byte slot)
     {
+        DebugLog.Log($"JE_loadGame slot={slot} BEGIN");
         var sf = saveFiles[slot - 1];
         var player = Players.player;
 
@@ -405,6 +407,7 @@ internal static unsafe partial class Config
     //     段會原樣保留於 opentyrian_config，於 save 時 round-trip 寫回。
     private static bool load_opentyrian_config()
     {
+        DebugLog.Log("load_opentyrian_config BEGIN");
         // 預設
         Video.fullscreen_display = -1;
         Array.Copy(defaultKeySettings, keySettings, keySettings.Length);
@@ -453,6 +456,7 @@ internal static unsafe partial class Config
     // 設定 video[fullscreen] 後，將 opentyrian_config 整份寫出（含 deinit_joysticks 寫入的 joystick 段）。
     private static bool save_opentyrian_config()
     {
+        DebugLog.Log($"save_opentyrian_config: fullscreen={Video.fullscreen_display} scaler={Globals.Video.ScalerName}");
         ConfigFile config = opentyrian_config;
 
         ConfigSection section = config.FindOrAddSection("video", null);
@@ -478,6 +482,7 @@ internal static unsafe partial class Config
 
     public static void loadConfiguration()
     {
+        DebugLog.Log("loadConfiguration BEGIN");
         bool invalid = false;
 
         Stream? f = CFile.dir_fopen_warn(get_user_directory(), "tyrian.cfg", "rb");
@@ -553,6 +558,7 @@ internal static unsafe partial class Config
 
     public static void saveConfiguration()
     {
+        DebugLog.Log($"saveConfiguration: processorType={processorType} gameSpeed={gameSpeed} inputDevice0={inputDevice[0]} inputDevice1={inputDevice[1]}");
         byte[] data = new byte[28];
         fixed (byte* dp = data)
         {
@@ -588,6 +594,7 @@ internal static unsafe partial class Config
 
     public static void loadSaves()
     {
+        DebugLog.Log("loadSaves BEGIN");
         bool invalid = false;
 
         Stream? f = CFile.dir_fopen_warn(get_user_directory(), "tyrian.sav", "rb");
@@ -688,6 +695,7 @@ internal static unsafe partial class Config
 
     public static void saveSaves()
     {
+        DebugLog.Log("saveSaves");
         byte[] data = new byte[SAVE_FILE_SIZE + 4];
         fixed (byte* dp = data)
         {

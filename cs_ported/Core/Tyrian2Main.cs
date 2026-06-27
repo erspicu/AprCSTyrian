@@ -105,6 +105,7 @@ internal static unsafe partial class Tyrian2
         goto start_level_first;
 
     start_level:
+        DebugLog.Log($"=== start_level (next): mainLevel={Config.mainLevel} lvlFileNum={lvlFileNum} p0.is_alive={player[0].is_alive} armor={player[0].armor} shield={player[0].shield} Lives={player[0].Lives} constantDie={Params.constantDie} constantPlay={Params.constantPlay}");
 
         Keyboard.keyboardClearInput();
         Keyboard.mouseClearInput();
@@ -176,6 +177,7 @@ internal static unsafe partial class Tyrian2
             return;
 
     start_level_first:
+        DebugLog.Log($"=== start_level_first: mainLevel={Config.mainLevel} lvlFileNum={lvlFileNum} p0.is_alive={player[0].is_alive} armor={player[0].armor} shield={player[0].shield} Lives={player[0].Lives} constantDie={Params.constantDie} constantPlay={Params.constantPlay}");
 
         Loudness.set_volume((byte)Nortsong.tyrMusicVolume, (byte)Nortsong.fxVolume);
 
@@ -1559,6 +1561,7 @@ internal static unsafe partial class Tyrian2
 
         if (reallyEndLevel)
         {
+            DebugLog.Log($"reallyEndLevel=TRUE -> 結束本關 goto start_level. playerEndLevel={playerEndLevel} endLevel={endLevel} allPlayersGone={allPlayersGone} p0.is_alive={player[0].is_alive} p0.expl={player[0].exploding_ticks} levelEnd={Varz.levelEnd}");
             goto start_level;
         }
         goto level_loop;
