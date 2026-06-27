@@ -12,8 +12,9 @@ namespace XBRz_speed
     // ============================================================
     unsafe public class HS_XBRz
     {
-        const int dominantDirectionThreshold = 4;
-        const int steepDirectionThreshold = 2;
+        // 原版 xBRZ 為浮點門檻：dominant = 3.6、steep = 2.2。
+        // 以整數 (×10) 還原，避免用 4 / 2 近似而改變邊緣判定特徵（漏判對角線 / 過度混合）。
+        const int dominantThresholdNum = 36, steepThresholdNum = 22, thresholdDen = 10;
         const int eqColorThres = 900;
 
         const int BlendNone = 0;
@@ -172,7 +173,8 @@ namespace XBRz_speed
             return y * y + cb * cb + cr * cr;
         }
 
-        // 查表版本，保留供 benchmark 切換
+        // 查表版本，目前未使用（保留供 benchmark）。注意：index 以 (色差+255)>>1 壓縮到 0..255，
+        // 會遺失 1 bit 精度且破壞正負對稱（色差 0 與 -1 同 index）。正式請用上面的 inline DistYCbCr。
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static int DistYCbCr_Table(uint p1, uint p2)
         {
@@ -223,6 +225,11 @@ namespace XBRz_speed
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ComputeEdgeFeatures(uint* src)
         {
+            // 清除跨幀殘留：preProcBuffer_local 帶上一幀垃圾會污染第 0 列的邊緣判定；
+            // _preProcBuffer 每列最後一欄不在合併迴圈內被寫入，亦需歸零避免讀到上一幀資料。
+            new Span<byte>(preProcBuffer_local, width).Clear();
+            new Span<byte>(_preProcBuffer, width * height).Clear();
+
             // =========================================================
             // 第一階段：平行計算所有邊緣特徵與顏色距離
             // =========================================================
@@ -280,8 +287,8 @@ namespace XBRz_speed
 
                     bool jg_lt_fk = jg < fk;
                     bool fk_lt_jg = fk < jg;
-                    bool isDom_jg = (dominantDirectionThreshold * jg < fk);
-                    bool isDom_fk = (dominantDirectionThreshold * fk < jg);
+                    bool isDom_jg = (dominantThresholdNum * jg < thresholdDen * fk);
+                    bool isDom_fk = (dominantThresholdNum * fk < thresholdDen * jg);
 
                     byte val_jg = (byte)(BlendNormal + *(byte*)&isDom_jg);
                     byte val_fk = (byte)(BlendNormal + *(byte*)&isDom_fk);
@@ -411,8 +418,8 @@ namespace XBRz_speed
             int fg = DistYCbCr(f, g), hc = DistYCbCr(h, c);
 
             // 修正步驟：先存入變數，再轉換位移 (解決 CS0030 錯誤)
-            bool haveShallow = (steepDirectionThreshold * fg <= hc) & (e != g) & (d != g);
-            bool haveSteep = (steepDirectionThreshold * hc <= fg) & (e != c) & (b != c);
+            bool haveShallow = (steepThresholdNum * fg <= thresholdDen * hc) & (e != g) & (d != g);
+            bool haveSteep = (steepThresholdNum * hc <= thresholdDen * fg) & (e != c) & (b != c);
             int state = (*(byte*)&doLineBlend) | ((*(byte*)&haveShallow) << 1) | ((*(byte*)&haveSteep) << 2);
 
             _blendFuncs2X[state](px, trg, trgi, trgW, nr);
@@ -426,8 +433,8 @@ namespace XBRz_speed
             uint px = DistYCbCr(e, f) <= DistYCbCr(e, h) ? f : h;
             int fg = DistYCbCr(f, g), hc = DistYCbCr(h, c);
 
-            bool haveShallow = (steepDirectionThreshold * fg <= hc) & (e != g) & (d != g);
-            bool haveSteep = (steepDirectionThreshold * hc <= fg) & (e != c) & (b != c);
+            bool haveShallow = (steepThresholdNum * fg <= thresholdDen * hc) & (e != g) & (d != g);
+            bool haveSteep = (steepThresholdNum * hc <= thresholdDen * fg) & (e != c) & (b != c);
             int state = (*(byte*)&doLineBlend) | ((*(byte*)&haveShallow) << 1) | ((*(byte*)&haveSteep) << 2);
 
             _blendFuncs3X[state](px, trg, trgi, trgW, nr);
@@ -441,8 +448,8 @@ namespace XBRz_speed
             uint px = DistYCbCr(e, f) <= DistYCbCr(e, h) ? f : h;
             int fg = DistYCbCr(f, g), hc = DistYCbCr(h, c);
 
-            bool haveShallow = (steepDirectionThreshold * fg <= hc) & (e != g) & (d != g);
-            bool haveSteep = (steepDirectionThreshold * hc <= fg) & (e != c) & (b != c);
+            bool haveShallow = (steepThresholdNum * fg <= thresholdDen * hc) & (e != g) & (d != g);
+            bool haveSteep = (steepThresholdNum * hc <= thresholdDen * fg) & (e != c) & (b != c);
             int state = (*(byte*)&doLineBlend) | ((*(byte*)&haveShallow) << 1) | ((*(byte*)&haveSteep) << 2);
 
             _blendFuncs4X[state](px, trg, trgi, trgW, nr);
@@ -456,8 +463,8 @@ namespace XBRz_speed
             uint px = DistYCbCr(e, f) <= DistYCbCr(e, h) ? f : h;
             int fg = DistYCbCr(f, g), hc = DistYCbCr(h, c);
 
-            bool haveShallow = (steepDirectionThreshold * fg <= hc) & (e != g) & (d != g);
-            bool haveSteep = (steepDirectionThreshold * hc <= fg) & (e != c) & (b != c);
+            bool haveShallow = (steepThresholdNum * fg <= thresholdDen * hc) & (e != g) & (d != g);
+            bool haveSteep = (steepThresholdNum * hc <= thresholdDen * fg) & (e != c) & (b != c);
             int state = (*(byte*)&doLineBlend) | ((*(byte*)&haveShallow) << 1) | ((*(byte*)&haveSteep) << 2);
 
             _blendFuncs5X[state](px, trg, trgi, trgW, nr);
@@ -471,8 +478,8 @@ namespace XBRz_speed
             uint px = DistYCbCr(e, f) <= DistYCbCr(e, h) ? f : h;
             int fg = DistYCbCr(f, g), hc = DistYCbCr(h, c);
 
-            bool haveShallow = (steepDirectionThreshold * fg <= hc) & (e != g) & (d != g);
-            bool haveSteep = (steepDirectionThreshold * hc <= fg) & (e != c) & (b != c);
+            bool haveShallow = (steepThresholdNum * fg <= thresholdDen * hc) & (e != g) & (d != g);
+            bool haveSteep = (steepThresholdNum * hc <= thresholdDen * fg) & (e != c) & (b != c);
             int state = (*(byte*)&doLineBlend) | ((*(byte*)&haveShallow) << 1) | ((*(byte*)&haveSteep) << 2);
 
             _blendFuncs6X[state](px, trg, trgi, trgW, nr);
@@ -505,7 +512,7 @@ namespace XBRz_speed
 
             for (int r = 0; r < 4; r++)
             {
-                *(Vector4*)(trg + trgi + r * pitch) = vCol; // 一次寫入 4 像素
+                Unsafe.WriteUnaligned(trg + trgi + r * pitch, vCol); // 一次寫入 4 像素
             }
         }
 
@@ -518,8 +525,8 @@ namespace XBRz_speed
             for (int r = 0; r < 5; r++)
             {
                 uint* p = trg + trgi + r * pitch;
-                *(Vector4*)p = vCol;       // 寫入像素 0, 1, 2, 3
-                *(Vector4*)(p + 1) = vCol; // 寫入像素 1, 2, 3, 4 (重疊 1,2,3)
+                Unsafe.WriteUnaligned(p, vCol);        // 寫入像素 0,1,2,3
+                Unsafe.WriteUnaligned(p + 1, vCol);    // 寫入像素 1,2,3,4 (非對齊安全)
             }
         }
 
@@ -532,8 +539,8 @@ namespace XBRz_speed
             for (int r = 0; r < 6; r++)
             {
                 uint* p = trg + trgi + r * pitch;
-                *(Vector4*)p = vCol;       // 寫入像素 0, 1, 2, 3
-                *(Vector4*)(p + 2) = vCol; // 寫入像素 2, 3, 4, 5 (重疊 2,3)
+                Unsafe.WriteUnaligned(p, vCol);        // 寫入像素 0,1,2,3
+                Unsafe.WriteUnaligned(p + 2, vCol);    // 寫入像素 2,3,4,5 (非對齊安全)
             }
         }
 
