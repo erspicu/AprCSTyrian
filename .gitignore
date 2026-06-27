@@ -76,3 +76,7 @@ project.fragment.lock.json
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# 發佈產出(release.sh)
+/AprCSTyrianRelease/
+/AprCSTyrianRelease-*.zip
