@@ -15,7 +15,7 @@ namespace XBRz_speed
         // 原版 xBRZ 為浮點門檻：dominant = 3.6、steep = 2.2。
         // 以整數 (×10) 還原，避免用 4 / 2 近似而改變邊緣判定特徵（漏判對角線 / 過度混合）。
         const int dominantThresholdNum = 36, steepThresholdNum = 22, thresholdDen = 10;
-        const int eqColorThres = 900;
+        const int eqColorThres = 30;   // 官方 equalColorTolerance=30（線性距離；原 900 是 30² 之誤，配平方距離才對）
 
         const int BlendNone = 0;
         const int BlendNormal = 1;
@@ -160,6 +160,9 @@ namespace XBRz_speed
             trg[targetIdx] = 0xFF000000u | res_RB | res_G;
         }
 
+        // 對應官方 xbrz.cpp distYCbCr：BT.2020 浮點係數 + sqrt（**線性**距離）。
+        // 關鍵：官方門檻（equalColorTolerance=30 / dominant=3.6 / steep=2.2 / centerBias=4）
+        // 都是針對線性距離調的；若回傳平方距離(y²+cb²+cr²)，這些門檻單位就錯了。
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static int DistYCbCr(uint p1, uint p2)
         {
@@ -167,10 +170,13 @@ namespace XBRz_speed
             int r_diff = (int)((p1 >> 16) & 0xFF) - (int)((p2 >> 16) & 0xFF);
             int g_diff = (int)((p1 >> 8) & 0xFF) - (int)((p2 >> 8) & 0xFF);
             int b_diff = (int)(p1 & 0xFF) - (int)(p2 & 0xFF);
-            int y = (262 * r_diff + 678 * g_diff + 59 * b_diff) / 1000;
-            int cb = (531 * (b_diff - y)) / 1000;
-            int cr = (678 * (r_diff - y)) / 1000;
-            return y * y + cb * cb + cr * cr;
+            const double k_b = 0.0593, k_r = 0.2627, k_g = 1 - k_b - k_r;
+            const double scale_b = 0.5 / (1 - k_b);
+            const double scale_r = 0.5 / (1 - k_r);
+            double y = k_r * r_diff + k_g * g_diff + k_b * b_diff;
+            double c_b = scale_b * (b_diff - y);
+            double c_r = scale_r * (r_diff - y);
+            return (int)Math.Sqrt(y * y + c_b * c_b + c_r * c_r); // lumaWeight = 1
         }
 
         // 查表版本，目前未使用（保留供 benchmark）。注意：index 以 (色差+255)>>1 壓縮到 0..255，
@@ -317,7 +323,9 @@ namespace XBRz_speed
             {
                 byte blendXy1 = 0;
                 int array_loc = y * width;
-                for (int x = 0; x < width - 1; ++x, ++array_loc)
+                // 對應官方：處理每一個來源欄(x < srcWidth)，最後一欄也要寫入 _preProcBuffer
+                // （承接前一欄帶過來的角落混合狀態），只在寫 x+1 時做邊界守衛，避免右緣一格漏混合。
+                for (int x = 0; x < width; ++x, ++array_loc)
                 {
                     // ★ 解壓縮：一次讀取 uint，再利用位元遮罩與移位還原 4 個狀態
                     uint state = results_merged[array_loc];
@@ -330,7 +338,8 @@ namespace XBRz_speed
                     _preProcBuffer[array_loc] = (byte)(preProcBuffer_local[x] | (r_f << 4));
                     preProcBuffer_local[x] = blendXy1 = (byte)(blendXy1 | (r_j << 2));
                     blendXy1 = r_k;
-                    preProcBuffer_local[x + 1] = (byte)(preProcBuffer_local[x + 1] | (r_g << 6));
+                    if (x + 1 < width)
+                        preProcBuffer_local[x + 1] = (byte)(preProcBuffer_local[x + 1] | (r_g << 6));
                 }
             }
         }
