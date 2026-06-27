@@ -14,4 +14,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <!-- 發佈時(release.sh 帶 -p:KeyLogOff=true)定義 KEYLOG_OFF，關閉 KeyLog 擷取/重播/截圖機制。 -->
+  <PropertyGroup Condition="'$(KeyLogOff)' == 'true'">
+    <DefineConstants>$(DefineConstants);KEYLOG_OFF</DefineConstants>
+  </PropertyGroup>
+
 </Project>

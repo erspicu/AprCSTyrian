@@ -21,6 +21,19 @@ namespace AprCSTyrian.Core;
 /// </summary>
 internal static unsafe class KeyLog
 {
+    /// <summary>
+    /// 原始碼總開關。開發/除錯期 = true（keylog 擷取 / 重播 / 截圖 可用，由環境變數啟用）；
+    /// 正式發佈時 = false（整個機制完全關閉，環境變數也不生效、相關程式碼被視為死碼消除）。
+    /// 平時保持 true；<c>tools/release.sh</c> 發佈時會自動以 <c>-p:KeyLogOff=true</c>
+    /// 編譯出 <c>KEYLOG_OFF</c> 符號，讓發佈版自動關閉，不需手動改這裡。
+    /// 若想手動關閉，直接把下面改成 <c>const bool Enabled = false;</c> 即可。
+    /// </summary>
+#if KEYLOG_OFF
+    internal const bool Enabled = false;
+#else
+    internal const bool Enabled = true;
+#endif
+
     private const int UNSET = -1, OFF = 0, CAPTURE = 1, REPLAY = 2;
     private static int mode = UNSET;
     private static long frameNum = 0;
@@ -46,6 +59,8 @@ internal static unsafe class KeyLog
     private static void Init()
     {
         mode = OFF;
+        if (!Enabled)
+            return; // 總開關關閉：完全 no-op（不讀環境變數、不擷取、不重播、不截圖）
         shots = !EnvOn("KEYLOG_NOSHOT");
         force = EnvOn("KEYLOG_FORCE");
         string? dir = Environment.GetEnvironmentVariable("KEYLOG_DIR");

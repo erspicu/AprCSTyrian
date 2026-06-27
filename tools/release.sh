@@ -38,7 +38,8 @@ fi
 echo "[1/5] dotnet publish (self-contained win-x64)..."
 rm -rf "$RELDIR"
 dotnet publish cs_ported/App/App.csproj -c Release -r win-x64 --self-contained true \
-    -p:PlatformTarget=x64 -o "$RELDIR" >/dev/null
+    -p:PlatformTarget=x64 -p:KeyLogOff=true -o "$RELDIR" >/dev/null
+# 註: -p:KeyLogOff=true 會編出 KEYLOG_OFF 符號,自動關閉 KeyLog 擷取/重播/截圖(發佈版不含除錯機制)
 echo "      → $RELDIR"
 
 # --- 2/5 帶入遊戲資料(Tyrian 2.1 freeware) ---
