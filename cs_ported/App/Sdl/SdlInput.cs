@@ -82,8 +82,15 @@ internal sealed unsafe class SdlInput : IInputBackend
         return Encoding.UTF8.GetString(text, len);
     }
 
-    public void SetRelativeMouseMode(bool enable) =>
-        SDL.SDL_SetRelativeMouseMode(enable ? SDL.SDL_bool.SDL_TRUE : SDL.SDL_bool.SDL_FALSE);
+    public void SetRelativeMouseMode(bool enable)
+    {
+        // 不把滑鼠鎖在視窗內：玩家可隨時把游標移出視窗去操作別的東西。
+        // 原版用 SDL relative mode 鎖游標來做「無邊界」的滑鼠操船；我們改為「不鎖」——
+        // 滑鼠操船仍可用（吃滑鼠移動事件的相對量 xrel/yrel），只是游標碰到視窗邊緣時船會停
+        // （標準的非捕捉行為）；鍵盤操作完全不受影響。
+        _ = enable;
+        SDL.SDL_SetRelativeMouseMode(SDL.SDL_bool.SDL_FALSE);
+    }
 
     public void ShowCursor(bool show) =>
         SDL.SDL_ShowCursor(show ? SDL.SDL_ENABLE : SDL.SDL_DISABLE);
