@@ -21,7 +21,17 @@ internal static partial class Varz
     {
         // 原始會在此釋放 audio/video/shape tables/sound samples。
         // 這些模組尚未全部移植；已移植者於此釋放，其餘待補。
+        // 對應 varz.c:JE_tyrianHalt 順序：deinit_joysticks（將指派寫入 opentyrian_config）
+        // 須在 saveConfiguration（→save_opentyrian_config 寫檔）之前。
+        Joystick.deinit_joysticks();
+
         MtRand.Shutdown();
+
+        if (code != 9)
+        {
+            Config.saveConfiguration();  // 內含 save_opentyrian_config（寫出 opentyrian.cfg）
+            Config.saveSaves();
+        }
 
         throw new TyrianHaltException(code);
     }

@@ -138,6 +138,9 @@ internal static unsafe partial class Config
     public static readonly byte[] editorItemAvail = new byte[100];
     public static ushort editorLevel;
 
+    // opentyrian.cfg (INI) 全域，對應 config.c:Config opentyrian_config。
+    public static readonly ConfigFile opentyrian_config = new();
+
     // TYRIAN.CFG 中為相容性保留的欄位
     private static byte inputDevice_ = 0, jConfigure = 0, midiPort = 0, soundEffects = 0, versionNum;
     private static readonly byte[] defaultJoyButtonAssign = { 1, 4, 5, 5 };
@@ -389,14 +392,63 @@ internal static unsafe partial class Config
         Nortsong.setFrameCount(Nortsong.frameCountMax);
     }
 
-    // opentyrian.cfg (INI) 暫為最小占位：套用預設按鍵；INI 解析待 config_file.c 移植。
+    // opentyrian.cfg (INI)：對應 config.c:load_opentyrian_config。
+    // 解析整份 INI 進 opentyrian_config 全域（供 joystick 等使用），並套用 video[fullscreen]。
+    // 註：scaler/scaling_mode 與 keyboard 各鍵的套用需 set_scaler_by_name /
+    //     SDL_GetScancodeFromName（尚未移植），此處不套用——但既有檔案中的 video/keyboard
+    //     段會原樣保留於 opentyrian_config，於 save 時 round-trip 寫回。
     private static bool load_opentyrian_config()
     {
+        // 預設
         Video.fullscreen_display = -1;
         Array.Copy(defaultKeySettings, keySettings, keySettings.Length);
-        return false;
+
+        ConfigFile config = opentyrian_config;
+
+        Stream? file = CFile.dir_fopen_warn(get_user_directory(), "opentyrian.cfg", "r");
+        if (file == null)
+            return false;
+
+        bool ok = ConfigFile.Parse(config, file);
+        CFile.fclose(file);
+        if (!ok)
+            return false;
+
+        ConfigSection? section = config.FindSection("video", null);
+        if (section != null)
+        {
+            if (section.GetIntOption("fullscreen", out int fs))
+                Video.fullscreen_display = fs;
+            // scaler / scaling_mode：待 set_scaler_by_name / set_scaling_mode_by_name 移植。
+        }
+
+        // keyboard 段：待 SDL_GetScancodeFromName 移植後才能套用各鍵；目前僅 round-trip 保留。
+
+        return true;
     }
-    private static void save_opentyrian_config() { /* INI 寫出待 config_file.c */ }
+
+    // opentyrian.cfg (INI)：對應 config.c:save_opentyrian_config。
+    // 設定 video[fullscreen] 後，將 opentyrian_config 整份寫出（含 deinit_joysticks 寫入的 joystick 段）。
+    private static bool save_opentyrian_config()
+    {
+        ConfigFile config = opentyrian_config;
+
+        ConfigSection section = config.FindOrAddSection("video", null);
+        section.SetIntOption("fullscreen", Video.fullscreen_display);
+        // scaler / scaling_mode：待 scalers[].name / scaling_mode_names 移植。
+        // keyboard 段：待 SDL_GetScancodeName 移植；既有段於 round-trip 保留。
+
+        try { Directory.CreateDirectory(get_user_directory()); } catch { /* 對應 mkdir，已存在則忽略 */ }
+
+        Stream? file = CFile.dir_fopen(get_user_directory(), "opentyrian.cfg", "w");
+        if (file == null)
+            return false;
+
+        ConfigFile.Write(config, file);
+        CFile.fclose(file);
+
+        return true;
+    }
 
     public static void loadConfiguration()
     {

@@ -275,7 +275,7 @@ internal static class Joystick
             joystick[j] = new JoystickType { index = j, open = true };
 
             // 對應原版開啟搖桿後讀名稱/軸鈕帽數的偵測訊息（此處不輸出 stdout）。
-            if (!load_joystick_assignments(j))
+            if (!load_joystick_assignments(Config.opentyrian_config, j))
                 reset_joystick_assignments(j);
         }
     }
@@ -289,7 +289,7 @@ internal static class Joystick
         for (int j = 0; j < joysticks; j++)
         {
             if (joystick[j].open)
-                save_joystick_assignments(j);
+                save_joystick_assignments(Config.opentyrian_config, j);
         }
         // handle 的關閉/子系統 Quit 由 App 的 SdlJoystick.Dispose 負責。
     }
@@ -335,12 +335,73 @@ internal static class Joystick
         joystick[j].threshold = 5;
     }
 
-    /* 已知限制：搖桿指派的持久化 (load/save_joystick_assignments) 依賴 config_file.c 的 INI 讀寫，
-     * 該模組未移植。因此 load 一律回 false（觸發 reset 預設指派），save 為 no-op。
-     * 影響：指派不會跨次啟動保存，但每次以合理預設（前 2 軸 + 第 1 帽 + 前 6 鈕）開局，仍可遊玩。 */
-    public static bool load_joystick_assignments(int j) => false;
+    // 從 opentyrian.cfg 的 joystick 段載入指派（對應 joystick.c:load_joystick_assignments）。
+    public static bool load_joystick_assignments(ConfigFile config, int j)
+    {
+        ConfigSection? section = config.FindSection("joystick", Globals.Joystick.GetName(j));
+        if (section == null)
+            return false;
 
-    public static bool save_joystick_assignments(int j) => true;
+        if (!section.GetBoolOption("analog", out bool analog))
+            analog = false;
+        joystick[j].analog = analog;
+
+        joystick[j].sensitivity = section.GetOrSetIntOption("sensitivity", 5);
+
+        joystick[j].threshold = section.GetOrSetIntOption("threshold", 5);
+
+        for (int a = 0; a < assignment_names.Length; ++a)
+        {
+            for (int i = 0; i < joystick[j].assignment[a].Length; ++i)
+                joystick[j].assignment[a][i].type = Joystick_assignment_types.NONE;
+
+            ConfigOption? option = section.GetOption(assignment_names[a]);
+            if (option == null)
+                continue;
+
+            // 對應 foreach_option_i_value：依序填入，最多 COUNTOF(assignment[a]) 個。
+            int idx = 0;
+            foreach (string value in option.GetValues())
+            {
+                if (idx >= joystick[j].assignment[a].Length)
+                    break;
+
+                code_to_assignment(ref joystick[j].assignment[a][idx], value);
+                idx++;
+            }
+        }
+
+        return true;
+    }
+
+    // 將指派存入 opentyrian.cfg 的 joystick 段（對應 joystick.c:save_joystick_assignments）。
+    public static bool save_joystick_assignments(ConfigFile config, int j)
+    {
+        ConfigSection section = config.FindOrAddSection("joystick", Globals.Joystick.GetName(j));
+
+        section.SetBoolOption("analog", joystick[j].analog, ConfigBoolStyle.NO_YES);
+
+        section.SetIntOption("sensitivity", joystick[j].sensitivity);
+
+        section.SetIntOption("threshold", joystick[j].threshold);
+
+        for (int a = 0; a < assignment_names.Length; ++a)
+        {
+            ConfigOption option = section.SetOption(assignment_names[a], null);
+
+            option = option.SetValue(null);
+
+            for (int i = 0; i < joystick[j].assignment[a].Length; ++i)
+            {
+                if (joystick[j].assignment[a][i].type == Joystick_assignment_types.NONE)
+                    continue;
+
+                option = option.AddValue(assignment_to_code(in joystick[j].assignment[a][i]));
+            }
+        }
+
+        return true;
+    }
 
     private static readonly string[] assignment_names =
     {
@@ -391,6 +452,107 @@ internal static class Joystick
         default:
             return "";
         }
+    }
+
+    // assignment_to_code() 的反向（對應 joystick.c:code_to_assignment）。
+    // 對應原版 sscanf(" AX %d%c") / (" BTN %d") / (" H %d%c%c")。
+    private static void code_to_assignment(ref Joystick_assignment assignment, string buffer)
+    {
+        assignment = default;
+
+        char axis = '\0', direction = '\0';
+
+        if (TryScanAxis(buffer, out assignment.num, out direction))
+            assignment.type = Joystick_assignment_types.AXIS;
+        else if (TryScanButton(buffer, out assignment.num))
+            assignment.type = Joystick_assignment_types.BUTTON;
+        else if (TryScanHat(buffer, out assignment.num, out axis, out direction))
+            assignment.type = Joystick_assignment_types.HAT;
+
+        if (assignment.num == 0)
+            assignment.type = Joystick_assignment_types.NONE;
+        else
+            --assignment.num;
+
+        assignment.x_axis = (char.ToUpperInvariant(axis) == 'X');
+        assignment.negative_axis = (char.ToUpperInvariant(direction) == '-');
+    }
+
+    // sscanf(" AX %d%c", &num, &dir) == 2
+    private static bool TryScanAxis(string s, out int num, out char dir)
+    {
+        num = 0; dir = '\0';
+        int i = SkipWs(s, 0);
+        if (!MatchLiteral(s, ref i, "AX")) return false;
+        if (!ScanInt(s, ref i, out num)) return false;
+        if (i >= s.Length) return false; // %c 需要一個字元
+        dir = s[i++];
+        return true;
+    }
+
+    // sscanf(" BTN %d", &num) == 1
+    private static bool TryScanButton(string s, out int num)
+    {
+        num = 0;
+        int i = SkipWs(s, 0);
+        if (!MatchLiteral(s, ref i, "BTN")) return false;
+        return ScanInt(s, ref i, out num);
+    }
+
+    // sscanf(" H %d%c%c", &num, &axis, &dir) == 3
+    private static bool TryScanHat(string s, out int num, out char axis, out char dir)
+    {
+        num = 0; axis = '\0'; dir = '\0';
+        int i = SkipWs(s, 0);
+        if (!MatchLiteral(s, ref i, "H")) return false;
+        if (!ScanInt(s, ref i, out num)) return false;
+        if (i >= s.Length) return false;
+        axis = s[i++];
+        if (i >= s.Length) return false;
+        dir = s[i++];
+        return true;
+    }
+
+    private static int SkipWs(string s, int i)
+    {
+        while (i < s.Length && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' ||
+                                s[i] == '\r' || s[i] == '\v' || s[i] == '\f'))
+            ++i;
+        return i;
+    }
+
+    private static bool MatchLiteral(string s, ref int i, string lit)
+    {
+        if (i + lit.Length > s.Length) return false;
+        for (int k = 0; k < lit.Length; ++k)
+            if (s[i + k] != lit[k]) return false;
+        i += lit.Length;
+        return true;
+    }
+
+    // 對應 scanf "%d"：跳前導空白、選擇性正負號、≥1 個十進位數字。
+    private static bool ScanInt(string s, ref int i, out int value)
+    {
+        value = 0;
+        int j = SkipWs(s, i);
+        bool neg = false;
+        if (j < s.Length && (s[j] == '+' || s[j] == '-'))
+        {
+            neg = s[j] == '-';
+            ++j;
+        }
+        int start = j;
+        long acc = 0;
+        while (j < s.Length && s[j] >= '0' && s[j] <= '9')
+        {
+            acc = acc * 10 + (s[j] - '0');
+            ++j;
+        }
+        if (j == start)
+            return false;
+        value = (int)(neg ? -acc : acc);
+        i = j;
+        return true;
     }
 
     // 擷取搖桿輸入以設定指派；偵測到非搖桿輸入則回 false
