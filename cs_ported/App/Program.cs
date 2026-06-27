@@ -14,11 +14,11 @@ internal static class Program
     private static int Main(string[] args)
     {
         // 資料/使用者目錄：資料目錄可用 -t/--data 覆寫（由 JE_paramCheck 處理），預設放在執行檔旁。
+        // 設定/存檔放在執行檔同目錄的 config/ 內（與執行檔一起管理），啟動時確保存在、不存在則建立。
         string baseDir = AppContext.BaseDirectory;
         string dataRoot = Path.Combine(baseDir, "data");
-        string userRoot = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "AprCSTyrian");
+        string userRoot = Path.Combine(baseDir, "config");
+        try { Directory.CreateDirectory(userRoot); } catch { /* 唯讀目錄等情況忽略，後續存檔自會回報 */ }
 
         try
         {

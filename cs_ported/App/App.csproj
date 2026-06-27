@@ -32,4 +32,17 @@
     <PackageReference Include="Sayers.SDL2.Core" Version="1.0.11" />
   </ItemGroup>
 
+  <!--
+    發佈精簡：本遊戲只用核心 SDL2.dll（影像/音訊/輸入/搖桿）。
+    不使用 SDL2_image / SDL2_mixer / SDL2_ttf（自載圖、自混音、自繪字型），
+    故移除這三個擴充庫及其編解碼相依（lib*.dll：libpng/libjpeg/libFLAC/libvorbis…），
+    只保留 SDL2.dll。配合單檔發佈時也只會把 SDL2.dll 併入 .exe。
+  -->
+  <Target Name="TrimUnusedSdlNatives" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+        Condition="'%(Extension)' == '.dll' AND ('%(Filename)' == 'SDL2_image' OR '%(Filename)' == 'SDL2_mixer' OR '%(Filename)' == 'SDL2_ttf' OR $([System.String]::Copy('%(Filename)').StartsWith('lib')))" />
+    </ItemGroup>
+  </Target>
+
 </Project>

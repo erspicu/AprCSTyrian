@@ -38,8 +38,16 @@ fi
 echo "[1/5] dotnet publish (self-contained win-x64)..."
 rm -rf "$RELDIR"
 dotnet publish cs_ported/App/App.csproj -c Release -r win-x64 --self-contained true \
-    -p:PlatformTarget=x64 -p:KeyLogOff=true -o "$RELDIR" >/dev/null
-# 註: -p:KeyLogOff=true 會編出 KEYLOG_OFF 符號,自動關閉 KeyLog 擷取/重播/截圖(發佈版不含除錯機制)
+    -p:PlatformTarget=x64 -p:KeyLogOff=true \
+    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+    -p:DebugType=none -p:DebugSymbols=false \
+    -o "$RELDIR" >/dev/null
+# 註:
+#  -p:KeyLogOff=true                          → 關閉 KeyLog 除錯機制(發佈版死碼消除)
+#  -p:PublishSingleFile=true                  → 所有受管理 DLL + .NET runtime 併入單一 AprCSTyrian.exe
+#  -p:IncludeNativeLibrariesForSelfExtract    → 連原生 SDL2.dll 也併入 exe(執行時自解壓載入)
+#  App.csproj 的 TrimUnusedSdlNatives target  → 只保留 SDL2.dll,排除未用的 SDL2_image/mixer/ttf 及 lib*.dll
+# 結果: 發佈資料夾只有「AprCSTyrian.exe + data/」,點 exe 即玩(免裝 .NET、免散佈一堆 DLL)。
 echo "      → $RELDIR"
 
 # --- 2/5 帶入遊戲資料(Tyrian 2.1 freeware) ---
