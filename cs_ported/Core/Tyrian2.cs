@@ -318,8 +318,383 @@ internal static unsafe partial class Tyrian2
         return Varz.gameLoaded;
     }
 
-    // === 子畫面 stub（待後續移植；目前回到標題） ===
-    private static void setupMenu() { }
+    // === setupMenu —— 移植 sources/src/opentyr.c:setupMenu（部分修改） ===
+    // 修改點：只實作 MENU_SETUP 與 MENU_SOUND；MENU_GRAPHICS 子選單整個略過
+    //         （依賴被 Scale3x 取代掉的 SDL scaler 基建）。"Graphics..." 仍顯示但畫成
+    //         disabled（較暗，brightness -4），選取時僅播 S_CLICK 不進子選單。
+    private const int MENU_NONE = 0, MENU_SETUP = 1, MENU_SOUND = 2;
+    private const int MENU_COUNT = 3;
+
+    private const int MI_NONE = 0, MI_DONE = 1, MI_GRAPHICS = 2, MI_SOUND = 3,
+                      MI_JUKEBOX = 4, MI_MUSIC_VOLUME = 5, MI_SOUND_VOLUME = 6;
+
+    private readonly struct SetupMenuItem
+    {
+        public readonly int id;
+        public readonly string name;
+        public readonly string description;
+        public SetupMenuItem(int id, string name, string description)
+        {
+            this.id = id; this.name = name; this.description = description;
+        }
+    }
+
+    private readonly struct SetupMenu
+    {
+        public readonly string header;
+        public readonly SetupMenuItem[] items;
+        public SetupMenu(string header, SetupMenuItem[] items)
+        {
+            this.header = header; this.items = items;
+        }
+    }
+
+    private static void setupMenu()
+    {
+        SetupMenu[] menus = new SetupMenu[MENU_COUNT];
+        menus[MENU_SETUP] = new SetupMenu("Setup", new[]
+        {
+            new SetupMenuItem(MI_GRAPHICS, "Graphics...", "Change the graphics settings."),
+            new SetupMenuItem(MI_SOUND, "Sound...", "Change the sound settings."),
+            new SetupMenuItem(MI_JUKEBOX, "Jukebox", "Listen to the music of Tyrian."),
+            new SetupMenuItem(MI_DONE, "Done", "Return to the main menu."),
+        });
+        menus[MENU_SOUND] = new SetupMenu("Sound", new[]
+        {
+            new SetupMenuItem(MI_MUSIC_VOLUME, "Music Volume", "Change volume with the left/right arrow keys."),
+            new SetupMenuItem(MI_SOUND_VOLUME, "Sound Volume", "Change volume with the left/right arrow keys."),
+            new SetupMenuItem(MI_DONE, "Done", "Return to the previous menu."),
+        });
+
+        if (Sprites.shopSpriteSheet.data == null)
+            Sprites.JE_loadCompShapes(ref Sprites.shopSpriteSheet, '1');  // need mouse pointer sprites
+
+        bool restart = true;
+
+        int[] menuParents = new int[MENU_COUNT];
+        int[] selectedMenuItemIndexes = new int[MENU_COUNT];
+        int currentMenu = MENU_SETUP;
+
+        const int xCenter = 320 / 2;
+        const int yMenuHeader = 4;
+        const int xMenuItem = 45;
+        const int xMenuItemName = xMenuItem;
+        const int wMenuItemName = 135;
+        const int xMenuItemValue = xMenuItemName + wMenuItemName;
+        const int wMenuItemValue = 95;
+        const int wMenuItem = wMenuItemName + wMenuItemValue;
+        const int yMenuItems = 37;
+        const int dyMenuItems = 21;
+        const int hMenuItem = 13;
+
+        for (; ; )
+        {
+            Nortsong.setFrameCount(1);
+
+            if (restart)
+            {
+                Picload.JE_loadPic(Video.VGAScreen2, 2, false);
+                Vga256d.fill_rectangle_wh(Video.VGAScreen2, 0, 192, 320, 8, 0);
+            }
+
+            // Restore background.
+            CopyScreen(Video.VGAScreen, Video.VGAScreen2);
+
+            SetupMenu menu = menus[currentMenu];
+
+            // Draw header.
+            FontDraw.drawFontHvShadowAligned(Video.VGAScreen, xCenter, yMenuHeader, menu.header, Font.FONT_LARGE, FontAlignment.ALIGN_CENTER, 15, -3, false, 2);
+
+            ref int selectedMenuItemIndex = ref selectedMenuItemIndexes[currentMenu];
+            SetupMenuItem[] menuItems = menu.items;
+            int menuItemsCount = menuItems.Length;
+
+            // Draw menu items.
+            for (int i = 0; i < menuItemsCount; ++i)
+            {
+                SetupMenuItem menuItem = menuItems[i];
+
+                int y = yMenuItems + dyMenuItems * i;
+
+                bool selected = i == selectedMenuItemIndex;
+                // 修改：Graphics 子選單不可用，永遠畫成 disabled（較暗）。
+                bool disabled = menuItem.id == MI_GRAPHICS;
+
+                string name = menuItem.name;
+
+                FontDraw.drawFontHvShadow(Video.VGAScreen, xMenuItemName, y, name, Font.FONT_NORMAL, 15, (sbyte)(-3 + (selected ? 2 : 0) + (disabled ? -4 : 0)), false, 2);
+
+                switch (menuItem.id)
+                {
+                case MI_MUSIC_VOLUME:
+                    Nortvars.JE_barDrawShadow(Video.VGAScreen, xMenuItemValue, y, 1, Loudness.music_disabled ? 170 : 174, (Nortsong.tyrMusicVolume + 4) / 8, 2, 10);
+                    Vga256d.JE_rectangle(Video.VGAScreen, xMenuItemValue - 2, y - 2, xMenuItemValue + 96, y + 11, 242);
+                    break;
+
+                case MI_SOUND_VOLUME:
+                    Nortvars.JE_barDrawShadow(Video.VGAScreen, xMenuItemValue, y, 1, Loudness.samples_disabled ? 170 : 174, (Nortsong.fxVolume + 4) / 8, 2, 10);
+                    Vga256d.JE_rectangle(Video.VGAScreen, xMenuItemValue - 2, y - 2, xMenuItemValue + 96, y + 11, 242);
+                    break;
+
+                default:
+                    break;
+                }
+            }
+
+            // Draw status text.
+            Fonthand.JE_textShade(Video.VGAScreen, xMenuItemName, 190, menuItems[selectedMenuItemIndex].description, 15, 4, (uint)Fonthand.PART_SHADE);
+
+            if (restart)
+            {
+                Mouse.mouseCursor = Mouse.MOUSE_POINTER_NORMAL;
+
+                Palette.fade_palette(Palette.colors, 10, 0, 255);
+
+                restart = false;
+            }
+
+            Mouse.JE_mouseStart();
+            Video.JE_showVGA();
+            Mouse.JE_mouseReplace();
+
+            while (true)
+            {
+                Keyboard.waitUntilElapsed();
+
+                if (Keyboard.hasInput(InputFlags.INPUT_ANY))
+                    break;
+
+                Nortsong.setFrameCount(1);
+            }
+
+            // Handle menu item interaction.
+
+            bool action = false;
+
+            if (Keyboard.mouseGetInput(InputFlags.INPUT_ANY, out MouseInput mouseInput))
+            {
+                // Find menu item name or value that was hovered or clicked.
+                if (mouseInput.x >= xMenuItem && mouseInput.x < xMenuItem + wMenuItem)
+                {
+                    for (int i = 0; i < menuItemsCount; ++i)
+                    {
+                        int yMenuItem = yMenuItems + dyMenuItems * i;
+                        if (mouseInput.y >= yMenuItem && mouseInput.y < yMenuItem + hMenuItem)
+                        {
+                            if (selectedMenuItemIndex != i)
+                            {
+                                Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                                selectedMenuItemIndex = i;
+                            }
+
+                            if (mouseInput.button == SdlKeys.SDL_BUTTON_LEFT &&
+                                mouseInput.y >= yMenuItem && mouseInput.y < yMenuItem + hMenuItem)
+                            {
+                                // Act on menu item via name.
+                                if (mouseInput.x >= xMenuItemName && mouseInput.x < xMenuItemName + wMenuItemName)
+                                {
+                                    action = true;
+                                }
+
+                                // Act on menu item via value.
+                                else if (mouseInput.x >= xMenuItemValue && mouseInput.x < xMenuItemValue + wMenuItemValue)
+                                {
+                                    switch (menuItems[selectedMenuItemIndex].id)
+                                    {
+                                    case MI_MUSIC_VOLUME:
+                                    {
+                                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                                        int value = (mouseInput.x - xMenuItemValue) * 255 / (wMenuItemValue - 1);
+                                        Nortsong.tyrMusicVolume = (ushort)Math.Min(Math.Max(0, value), 255);
+
+                                        Loudness.set_volume((byte)Nortsong.tyrMusicVolume, (byte)Nortsong.fxVolume);
+                                        break;
+                                    }
+                                    case MI_SOUND_VOLUME:
+                                    {
+                                        int value = (mouseInput.x - xMenuItemValue) * 255 / (wMenuItemValue - 1);
+                                        Nortsong.fxVolume = (ushort)Math.Min(Math.Max(0, value), 255);
+
+                                        Loudness.set_volume((byte)Nortsong.tyrMusicVolume, (byte)Nortsong.fxVolume);
+
+                                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                                        break;
+                                    }
+                                    default:
+                                        break;
+                                    }
+                                }
+                            }
+
+                            break;
+                        }
+                    }
+                }
+
+                if (mouseInput.button == SdlKeys.SDL_BUTTON_RIGHT)
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING);
+
+                    currentMenu = menuParents[currentMenu];
+                }
+            }
+            else if (Keyboard.keyboardGetInput(out KeyboardInput keyboardInput))
+            {
+                switch (keyboardInput.scancode)
+                {
+                case SdlKeys.SDL_SCANCODE_UP:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                    selectedMenuItemIndex = selectedMenuItemIndex == 0
+                        ? menuItemsCount - 1
+                        : selectedMenuItemIndex - 1;
+                    break;
+                }
+                case SdlKeys.SDL_SCANCODE_DOWN:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                    selectedMenuItemIndex = selectedMenuItemIndex == menuItemsCount - 1
+                        ? 0
+                        : selectedMenuItemIndex + 1;
+                    break;
+                }
+                case SdlKeys.SDL_SCANCODE_LEFT:
+                {
+                    switch (menuItems[selectedMenuItemIndex].id)
+                    {
+                    case MI_MUSIC_VOLUME:
+                    {
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                        Nortsong.JE_changeVolume(ref Nortsong.tyrMusicVolume, -8, ref Nortsong.fxVolume, 0);
+                        break;
+                    }
+                    case MI_SOUND_VOLUME:
+                    {
+                        Nortsong.JE_changeVolume(ref Nortsong.tyrMusicVolume, 0, ref Nortsong.fxVolume, -8);
+
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                        break;
+                    }
+                    default:
+                        break;
+                    }
+                    break;
+                }
+                case SdlKeys.SDL_SCANCODE_RIGHT:
+                {
+                    switch (menuItems[selectedMenuItemIndex].id)
+                    {
+                    case MI_MUSIC_VOLUME:
+                    {
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+
+                        Nortsong.JE_changeVolume(ref Nortsong.tyrMusicVolume, 8, ref Nortsong.fxVolume, 0);
+                        break;
+                    }
+                    case MI_SOUND_VOLUME:
+                    {
+                        Nortsong.JE_changeVolume(ref Nortsong.tyrMusicVolume, 0, ref Nortsong.fxVolume, 8);
+
+                        Nortsong.JE_playSampleNum((byte)Sndmast.S_CURSOR);
+                        break;
+                    }
+                    default:
+                        break;
+                    }
+                    break;
+                }
+                case SdlKeys.SDL_SCANCODE_SPACE:
+                case SdlKeys.SDL_SCANCODE_RETURN:
+                {
+                    action = true;
+                    break;
+                }
+                case SdlKeys.SDL_SCANCODE_ESCAPE:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SPRING);
+
+                    currentMenu = menuParents[currentMenu];
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+
+            if (action)
+            {
+                int selectedMenuItemId = menuItems[selectedMenuItemIndex].id;
+
+                switch (selectedMenuItemId)
+                {
+                case MI_DONE:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+
+                    currentMenu = menuParents[currentMenu];
+                    break;
+                }
+                case MI_GRAPHICS:
+                {
+                    // 修改：Graphics 子選單暫時無法進入（依賴被取代的 SDL scaler 基建）。
+                    // 僅播 S_CLICK 給回饋，不切換選單。
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CLICK);
+                    break;
+                }
+                case MI_SOUND:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+
+                    menuParents[MENU_SOUND] = currentMenu;
+                    currentMenu = MENU_SOUND;
+                    selectedMenuItemIndexes[currentMenu] = 0;
+                    break;
+                }
+                case MI_JUKEBOX:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_SELECT);
+
+                    Palette.fade_black(10);
+
+                    Jukebox.jukebox();
+
+                    restart = true;
+                    break;
+                }
+                case MI_MUSIC_VOLUME:
+                {
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CLICK);
+
+                    Loudness.music_disabled = !Loudness.music_disabled;
+                    if (!Loudness.music_disabled)
+                        Loudness.restart_song();
+                    break;
+                }
+                case MI_SOUND_VOLUME:
+                {
+                    Loudness.samples_disabled = !Loudness.samples_disabled;
+
+                    Nortsong.JE_playSampleNum((byte)Sndmast.S_CLICK);
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+
+            if (currentMenu == MENU_NONE)
+            {
+                Palette.fade_black(10);
+
+                return;
+            }
+        }
+    }
     /// <summary>對應 tyrian2.c:JE_whoa —— 輸入 'engage' 的螢幕暈染淡出特效（像素滲透）。</summary>
     private static unsafe void JE_whoa()
     {
